@@ -16,7 +16,7 @@ to an append-only `GuardLog` for a tamper-evident audit trail.
 ```
 pharos-guard/
 ├── packages/
-│   ├── contracts/      # Foundry: Policy.sol + GuardLog.sol (+ tests, deploy)
+│   ├── contracts/      # Foundry: TreasuryPolicy.sol + GuardLog.sol (+ tests, deploy)
 │   └── guard-skill/    # TypeScript: viem chain def + the tx firewall core
 ├── apps/
 │   ├── agent/          # @pharos-guard/agent  (placeholder)
@@ -67,12 +67,16 @@ cast chain-id --rpc-url "$PHAROS_RPC_URL"   # → 688688
 
 ```bash
 cd packages/contracts
+AGENT_ADDRESS=0xYourAgent \
 forge script script/Deploy.s.sol:Deploy \
   --rpc-url "$PHAROS_RPC_URL" \
   --private-key "$PRIVATE_KEY" \
   --broadcast
-# record the printed Policy / GuardLog addresses into .env
+# addresses are written to packages/contracts/deployments/pharos-testnet.json
 ```
+
+See [`packages/contracts/README.md`](packages/contracts/README.md) for the
+deployed-address table and verification steps.
 
 ## License
 

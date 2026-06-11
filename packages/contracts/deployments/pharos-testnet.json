@@ -1,0 +1,36 @@
+{
+  "network": "pharos-testnet",
+  "chainId": 688688,
+  "status": "pending_broadcast",
+  "note": "Contracts compile, tests pass (33/33, 100% branch coverage), and the deploy script was verified end-to-end against a local anvil. They are NOT yet broadcast to the Pharos testnet from this sandbox: the RPC host (testnet.dplabs-internal.com) is outside this environment's network allowlist, and no funded deployer/agent key is available here. To complete the deployment, run the command in `deployCommand` from an environment that can reach the RPC with a funded key; script/Deploy.s.sol overwrites the core fields of this file with the real addresses and deploy block.",
+  "rpcUrl": "https://testnet.dplabs-internal.com",
+  "explorer": "https://testnet.pharosscan.xyz",
+  "deployer": null,
+  "agent": null,
+  "deployBlock": null,
+  "contracts": {
+    "treasuryPolicy": {
+      "address": null,
+      "explorerUrl": null,
+      "verified": false
+    },
+    "guardLog": {
+      "address": null,
+      "explorerUrl": null,
+      "verified": false
+    }
+  },
+  "limits": {
+    "native": {
+      "maxPerTxWei": "1000000000000000000",
+      "dailyLimitWei": "5000000000000000000"
+    }
+  },
+  "verification": {
+    "attempted": false,
+    "verifier": "blockscout",
+    "verifierUrl": "https://testnet.pharosscan.xyz/api",
+    "note": "Verifier availability was NOT confirmed from this sandbox — the explorer/API host is also outside the allowlist. After deploy, try: forge verify-contract <address> src/TreasuryPolicy.sol:TreasuryPolicy --chain-id 688688 --verifier blockscout --verifier-url https://testnet.pharosscan.xyz/api . If the verifier endpoint is unavailable, set \"attempted\": true and \"verified\": false here and record the failure reason."
+  },
+  "deployCommand": "AGENT_ADDRESS=0x... forge script script/Deploy.s.sol:Deploy --rpc-url \"$PHAROS_RPC_URL\" --private-key \"$PRIVATE_KEY\" --broadcast"
+}

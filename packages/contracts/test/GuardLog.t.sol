@@ -1,47 +1,69 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.24;
 
-import {Test} from "forge-std/Test.sol";
-import {GuardLog} from "../src/GuardLog.sol";
+import { Test } from "forge-std/Test.sol";
+import { GuardLog } from "../src/GuardLog.sol";
 
 contract GuardLogTest is Test {
     GuardLog internal guardLog;
-    address internal agent = address(0xA6E47);
+
+    address internal reporter = makeAddr("reporter");
+    address internal other = makeAddr("other");
+
+    event VerdictLogged(
+        address indexed reporter,
+        bytes32 indexed intentHash,
+        uint8 verdict,
+        string reason,
+        uint256 timestamp
+    );
 
     function setUp() public {
+        vm.warp(1_700_000_000);
         guardLog = new GuardLog();
     }
 
-    function test_StartsEmpty() public view {
-        assertEq(guardLog.count(), 0);
+    function test_StartsAtZero() public view {
+        assertEq(guardLog.verdictCount(reporter), 0);
     }
 
-    function test_RecordsEntry() public {
-        bytes32 digest = keccak256("tx-1");
-        uint256 idx = guardLog.record(digest, agent, true, "policy:ok");
+    function test_LogVerdict_EmitsAndCounts() public {
+        bytes32 intent = keccak256("intent-1");
 
-        assertEq(idx, 0);
-        assertEq(guardLog.count(), 1);
+        vm.expectEmit(true, true, false, true);
+        emit VerdictLogged(reporter, intent, 2, "over daily limit", block.timestamp);
 
-        GuardLog.Entry memory e = guardLog.entryAt(0);
-        assertEq(e.txDigest, digest);
-        assertEq(e.agent, agent);
-        assertTrue(e.allowed);
-        assertEq(e.reason, "policy:ok");
+        vm.prank(reporter);
+        guardLog.logVerdict(intent, 2, "over daily limit");
+
+        assertEq(guardLog.verdictCount(reporter), 1);
     }
 
-    function test_EmitsEvent() public {
-        bytes32 digest = keccak256("tx-2");
-        vm.expectEmit(true, true, true, true);
-        emit GuardLog.Recorded(0, digest, agent, false, "policy:over-per-tx-limit");
-        guardLog.record(digest, agent, false, "policy:over-per-tx-limit");
+    function test_LogVerdict_AcceptsAllValidVerdicts() public {
+        vm.startPrank(reporter);
+        guardLog.logVerdict(keccak256("a"), guardLog.VERDICT_ALLOW(), "allow");
+        guardLog.logVerdict(keccak256("b"), guardLog.VERDICT_WARN(), "warn");
+        guardLog.logVerdict(keccak256("c"), guardLog.VERDICT_BLOCK(), "block");
+        vm.stopPrank();
+
+        assertEq(guardLog.verdictCount(reporter), 3);
     }
 
-    function test_AppendsInOrder() public {
-        guardLog.record(keccak256("a"), agent, true, "ok");
-        guardLog.record(keccak256("b"), agent, false, "deny");
-        assertEq(guardLog.count(), 2);
-        assertTrue(guardLog.entryAt(0).allowed);
-        assertFalse(guardLog.entryAt(1).allowed);
+    function test_LogVerdict_RevertsOnInvalidVerdict() public {
+        vm.expectRevert(abi.encodeWithSelector(GuardLog.InvalidVerdict.selector, uint8(3)));
+        guardLog.logVerdict(keccak256("x"), 3, "bad");
+    }
+
+    function test_VerdictCount_IsPerReporter() public {
+        vm.prank(reporter);
+        guardLog.logVerdict(keccak256("a"), 0, "ok");
+
+        vm.prank(other);
+        guardLog.logVerdict(keccak256("b"), 1, "warn");
+        vm.prank(other);
+        guardLog.logVerdict(keccak256("c"), 0, "ok");
+
+        assertEq(guardLog.verdictCount(reporter), 1);
+        assertEq(guardLog.verdictCount(other), 2);
     }
 }

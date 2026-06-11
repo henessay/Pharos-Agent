@@ -1,60 +1,48 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.24;
 
 /// @title GuardLog
-/// @notice Append-only, on-chain audit trail of tx-guard verdicts. The firewall
-///         records every decision (allow/deny) it makes about an agent
-///         transaction so the treasury has a tamper-evident history.
+/// @notice Permissionless, append-only audit trail of tx-guard verdicts. Any
+///         reporter (the firewall, a monitor, anyone) can log its verdict on a
+///         transaction intent so the treasury has a tamper-evident history.
 contract GuardLog {
-    struct Entry {
-        bytes32 txDigest; // hash identifying the evaluated transaction
-        address agent; // signer/agent the verdict applies to
-        bool allowed; // final verdict
-        uint64 timestamp; // block timestamp of the record
-        string reason; // machine-readable reason string
-    }
+    /// @notice Verdict classes.
+    uint8 public constant VERDICT_ALLOW = 0;
+    uint8 public constant VERDICT_WARN = 1;
+    uint8 public constant VERDICT_BLOCK = 2;
 
-    /// @notice All recorded verdicts in chronological order.
-    Entry[] private _entries;
+    /// @notice Number of verdicts logged by each reporter.
+    mapping(address reporter => uint256 count) private _verdictCount;
 
-    event Recorded(
-        uint256 indexed index,
-        bytes32 indexed txDigest,
-        address indexed agent,
-        bool allowed,
-        string reason
+    event VerdictLogged(
+        address indexed reporter,
+        bytes32 indexed intentHash,
+        uint8 verdict,
+        string reason,
+        uint256 timestamp
     );
 
-    /// @notice Record a guard verdict.
-    /// @param txDigest Hash identifying the evaluated transaction.
-    /// @param agent The agent/signer the verdict applies to.
-    /// @param allowed The verdict.
-    /// @param reason Machine-readable reason string.
-    /// @return index The index of the newly stored entry.
-    function record(bytes32 txDigest, address agent, bool allowed, string calldata reason)
-        external
-        returns (uint256 index)
-    {
-        index = _entries.length;
-        _entries.push(
-            Entry({
-                txDigest: txDigest,
-                agent: agent,
-                allowed: allowed,
-                timestamp: uint64(block.timestamp),
-                reason: reason
-            })
-        );
-        emit Recorded(index, txDigest, agent, allowed, reason);
+    /// @notice The verdict value was outside the allowed range (0..2).
+    error InvalidVerdict(uint8 verdict);
+
+    /// @notice Log a verdict on a transaction intent.
+    /// @param intentHash Hash identifying the evaluated transaction intent.
+    /// @param verdict 0 = allow, 1 = warn, 2 = block.
+    /// @param reason Human-readable explanation of the verdict.
+    function logVerdict(bytes32 intentHash, uint8 verdict, string calldata reason) external {
+        if (verdict > VERDICT_BLOCK) revert InvalidVerdict(verdict);
+
+        unchecked {
+            ++_verdictCount[msg.sender];
+        }
+
+        emit VerdictLogged(msg.sender, intentHash, verdict, reason, block.timestamp);
     }
 
-    /// @notice Total number of recorded entries.
-    function count() external view returns (uint256) {
-        return _entries.length;
-    }
-
-    /// @notice Fetch a stored entry by index.
-    function entryAt(uint256 index) external view returns (Entry memory) {
-        return _entries[index];
+    /// @notice Number of verdicts a given reporter has logged.
+    /// @param reporter The reporter address to query.
+    /// @return The reporter's verdict count.
+    function verdictCount(address reporter) external view returns (uint256) {
+        return _verdictCount[reporter];
     }
 }
