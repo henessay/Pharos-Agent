@@ -40,13 +40,16 @@ The script deploys both contracts, seeds native limits (`maxPerTx` 1 PHRS,
 > (see `deployments/pharos-testnet.json`). Explorer base:
 > <https://testnet.pharosscan.xyz>.
 
+<!-- deployments:start -->
 | Contract | Address | Explorer | Verified |
 |----------|---------|----------|----------|
-| TreasuryPolicy | `pending` | `https://testnet.pharosscan.xyz/address/<addr>` | ❌ |
-| GuardLog | `pending` | `https://testnet.pharosscan.xyz/address/<addr>` | ❌ |
+| TreasuryPolicy | `pending` | — | ❌ |
+| GuardLog | `pending` | — | ❌ |
+<!-- deployments:end -->
 
-After deploy, replace `pending`/`<addr>` with the real values, e.g.
-`[0xabc…](https://testnet.pharosscan.xyz/address/0xabc…)`.
+The table above is generated from `deployments/pharos-testnet.json`. After a
+real deploy, sync it (and the root README) with `pnpm sync:deployments` — no
+addresses are hand-edited.
 
 ### Contract verification
 

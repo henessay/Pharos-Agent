@@ -75,8 +75,18 @@ forge script script/Deploy.s.sol:Deploy \
 # addresses are written to packages/contracts/deployments/pharos-testnet.json
 ```
 
-See [`packages/contracts/README.md`](packages/contracts/README.md) for the
-deployed-address table and verification steps.
+## Deployed addresses — Pharos Testnet (chain id `688688`)
+
+<!-- deployments:start -->
+| Contract | Address | Explorer | Verified |
+|----------|---------|----------|----------|
+| TreasuryPolicy | `pending` | — | ❌ |
+| GuardLog | `pending` | — | ❌ |
+<!-- deployments:end -->
+
+Generated from `packages/contracts/deployments/pharos-testnet.json` via
+`pnpm sync:deployments`. See [`packages/contracts/README.md`](packages/contracts/README.md)
+for verification steps.
 
 ## License
 
