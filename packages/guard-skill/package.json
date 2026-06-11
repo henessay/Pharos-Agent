@@ -23,8 +23,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "live-check": "tsx scripts/live-check.ts"
   },
+  "bin": {
+    "pharos-guard-mcp": "bin/mcp.mjs"
+  },
   "dependencies": {
-    "viem": "^2.40.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "viem": "^2.40.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

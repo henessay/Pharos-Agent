@@ -1,44 +1,107 @@
-# Pharos Guard
+# Pharos Guard — tx-guard
 
-> **tx-guard** — a skill firewall that vets AI-agent transactions *before* they
-> are signed, backed by on-chain treasury policy contracts on the Pharos
-> testnet. Submission for the **Pharos AI Agent Carnival — Phase 1 (Skill
-> Hackathon)**.
+> A **transaction firewall** for AI agents on Pharos. An agent with a wallet is
+> one bad prompt away from draining a treasury; tx-guard puts a deterministic
+> gate in front of every transaction — simulate, decode, score six risk rules,
+> check the on-chain treasury policy, and return **allow / warn / block** before
+> anything is signed — then logs the verdict on-chain for a tamper-evident audit
+> trail. Submission for the **Pharos AI Agent Carnival — Phase 1 (Skill Hackathon)**.
 
-An AI agent with a wallet is one bad prompt away from draining a treasury.
-`tx-guard` puts a deterministic gate in front of every transaction: a proposed
-transfer is checked against an allowlist + spending limits (both off-chain in
-the agent and on-chain via the `Policy` contract), and every verdict is written
-to an append-only `GuardLog` for a tamper-evident audit trail.
-
-## Monorepo layout
-
-```
-pharos-guard/
-├── packages/
-│   ├── contracts/      # Foundry: TreasuryPolicy.sol + GuardLog.sol (+ tests, deploy)
-│   └── guard-skill/    # TypeScript: viem chain def + the tx firewall core
-├── apps/
-│   ├── agent/          # @pharos-guard/agent  (placeholder)
-│   └── web/            # @pharos-guard/web     (placeholder)
-├── docs/
-│   └── skill-format.md # spec for shipping tx-guard as a Pharos skill
-├── pnpm-workspace.yaml
-└── biome.json
-```
+One firewall, three surfaces: a **Pharos Skill**, an **MCP server**, and a demo
+**treasurer agent** — all backed by `TreasuryPolicy` + `GuardLog` contracts on
+the Pharos testnet (chain id `688688`).
 
 ## Quick start
 
 ```bash
 pnpm install
-pnpm build      # tsc (guard-skill) + forge build (contracts)
-pnpm test       # vitest (guard-skill) + forge test (contracts)
-pnpm lint       # biome
+pnpm build
+pnpm test     # 95 tests: contracts (forge) + guard-skill + agent (vitest)
+```
+
+Then try the firewall offline (no RPC, no keys) via the demo agent's fixtures:
+
+```bash
+pnpm --filter @pharos-guard/agent test     # dialog flow on mocked GuardReports
 ```
 
 > **Prerequisites:** Node ≥ 20, pnpm 10, and [Foundry](https://getfoundry.sh)
-> (`forge` / `cast`) for the contracts package. If Foundry is absent, the
-> contracts build/test steps skip gracefully so the JS pipeline still runs.
+> for the contracts. If Foundry is absent, contract build/test steps skip
+> gracefully so the JS pipeline still runs.
+
+## How it works
+
+```mermaid
+flowchart LR
+  U[User / prompt] --> A[Treasurer Agent<br/>OpenAI function calling]
+  A -->|propose_payment| A
+  A -->|guard_check| S
+
+  subgraph S[tx-guard skill / guard-skill core]
+    direction TB
+    D[decode calldata] --> R[6 risk rules]
+    SIM[simulate eth_call] --> R
+    R --> V{verdict<br/>allow / warn / block}
+  end
+
+  R -.reads.-> P[(TreasuryPolicy<br/>allowlist + limits)]
+  V -->|allow| X[execute_payment] --> P
+  V -->|log verdict| G[(GuardLog<br/>VerdictLogged)]
+  V -->|warn| A
+  V -->|block| A
+```
+
+The six rules: **SIM_REVERT**, **UNLIMITED_APPROVE**, **UNVERIFIED_CONTRACT**,
+**FIRST_INTERACTION**, **POLICY_VIOLATION**, **HIGH_VALUE**. Explorer-dependent
+rules degrade gracefully (skipped, never fatal) when the API is unavailable.
+
+## Layout
+
+```
+pharos-guard/
+├── packages/
+│   ├── contracts/      # Foundry: TreasuryPolicy.sol + GuardLog.sol (tests, deploy)
+│   └── guard-skill/    # core: risk engine, queries, deployments loader, MCP server
+├── apps/
+│   ├── agent/          # demo treasurer agent (OpenAI function calling, dry-run fixtures)
+│   └── web/            # placeholder
+├── skill/              # Pharos Skill package (SKILL.md + wrapper scripts)
+└── docs/               # skill-format, demo-script, cli-examples, post-deploy-checklist
+```
+
+## Use this skill in your Phase 2 agent
+
+tx-guard is built to drop in front of *any* agent. Three integration paths:
+
+**1. As a Pharos Skill** (instruction + wrapper scripts):
+
+```bash
+npx skills add /path/to/Pharos-Agent/skill --copy --agent claude-code --skill '*'
+```
+
+See [`docs/skill-install.md`](docs/skill-install.md). Your agent then runs
+`node skill/scripts/guard-check.mjs --from … --to … --data …` and reads the
+JSON verdict.
+
+**2. As an MCP server** (tools `guard_check`, `policy_status`,
+`guard_log_history`) — wire it into Claude Desktop / Claude Code:
+
+```jsonc
+{
+  "mcpServers": {
+    "pharos-guard": {
+      "command": "node",
+      "args": ["/path/to/Pharos-Agent/packages/guard-skill/bin/mcp.mjs"]
+    }
+  }
+}
+```
+
+See [`packages/guard-skill/README.md`](packages/guard-skill/README.md).
+
+**3. As a library** — `import { guardTransaction } from "@pharos-guard/guard-skill"`
+and gate your own `execute` path on `report.verdict === "allow"` (the demo agent
+in [`apps/agent`](apps/agent) does exactly this).
 
 ## Pharos Testnet
 
@@ -48,34 +111,20 @@ pnpm lint       # biome
 | RPC URL | `https://testnet.dplabs-internal.com` |
 | Explorer | `https://testnet.pharosscan.xyz` |
 | Native token | `PHRS` (18 decimals) |
-| Faucet | <https://testnet.pharosnetwork.xyz> (in-app) |
 
-The viem chain definition lives in
-[`packages/guard-skill/src/chain.ts`](packages/guard-skill/src/chain.ts); the
-Foundry profile is `pharos_testnet` in
-[`packages/contracts/foundry.toml`](packages/contracts/foundry.toml).
-
-Copy `.env.example` → `.env` and fill in your values:
-
-```bash
-cp .env.example .env
-# Verify the chain id against the live RPC:
-cast chain-id --rpc-url "$PHAROS_RPC_URL"   # → 688688
-```
+Chain def: [`packages/guard-skill/src/chain.ts`](packages/guard-skill/src/chain.ts).
+Copy `.env.example` → `.env` to configure RPC / keys / addresses.
 
 ## Deploy
 
 ```bash
 cd packages/contracts
-AGENT_ADDRESS=0xYourAgent \
-forge script script/Deploy.s.sol:Deploy \
-  --rpc-url "$PHAROS_RPC_URL" \
-  --private-key "$PRIVATE_KEY" \
-  --broadcast
-# addresses are written to packages/contracts/deployments/pharos-testnet.json
+AGENT_ADDRESS=0xYourAgent forge script script/Deploy.s.sol:Deploy \
+  --rpc-url "$PHAROS_RPC_URL" --private-key "$PRIVATE_KEY" --broadcast
+pnpm sync:deployments   # fills the address tables below from the deploy json
 ```
 
-## Deployed addresses — Pharos Testnet (chain id `688688`)
+### Deployed addresses — Pharos Testnet (chain id `688688`)
 
 <!-- deployments:start -->
 | Contract | Address | Explorer | Verified |
@@ -84,9 +133,22 @@ forge script script/Deploy.s.sol:Deploy \
 | GuardLog | `pending` | — | ❌ |
 <!-- deployments:end -->
 
-Generated from `packages/contracts/deployments/pharos-testnet.json` via
-`pnpm sync:deployments`. See [`packages/contracts/README.md`](packages/contracts/README.md)
-for verification steps.
+Addresses come only from
+`packages/contracts/deployments/pharos-testnet.json` (synced by
+`pnpm sync:deployments`); until then the core reports a structured
+`contracts_not_deployed` ("deploy pending"). Remaining post-deploy steps:
+[`docs/post-deploy-checklist.md`](docs/post-deploy-checklist.md).
+
+## Honest disclosure
+
+The contracts, risk engine, skill, MCP server, and demo agent in this repo were
+written during the hackathon period. The approach — a deterministic transaction
+firewall that vets agent actions before signing — builds on our prior experience
+designing transaction-screening and policy-enforcement systems; that background
+informed the design, but the code here is original to this submission. On-chain
+deployment to the Pharos testnet is pending (see the checklist above); every
+network-dependent surface degrades to a clear "deploy pending" state rather than
+faking results.
 
 ## License
 

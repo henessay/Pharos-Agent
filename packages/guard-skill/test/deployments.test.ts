@@ -61,7 +61,7 @@ describe("loadDeployments", () => {
     const file = writeTemp({ contracts: { treasuryPolicy: { address: null } } });
     delete process.env.POLICY_ADDRESS;
     delete process.env.GUARDLOG_ADDRESS;
-    expect(() => requireDeployments({ file })).toThrow(/not available/);
+    expect(() => requireDeployments({ file })).toThrow(/deploy pending/);
   });
 });
 

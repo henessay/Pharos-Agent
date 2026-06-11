@@ -17,6 +17,7 @@
     "sync:deployments": "node packages/contracts/scripts/sync-deployments.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.0"
+    "@biomejs/biome": "^2.3.0",
+    "@pharos-guard/guard-skill": "workspace:*"
   }
 }

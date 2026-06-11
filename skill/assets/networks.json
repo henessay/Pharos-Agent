@@ -1,0 +1,13 @@
+{
+  "networks": [
+    {
+      "name": "pharos-testnet",
+      "rpcUrl": "https://testnet.dplabs-internal.com",
+      "chainId": 688688,
+      "explorerUrl": "https://testnet.pharosscan.xyz",
+      "explorerApiUrl": "https://testnet.pharosscan.xyz/api",
+      "nativeToken": "PHRS"
+    }
+  ],
+  "defaultNetwork": "pharos-testnet"
+}

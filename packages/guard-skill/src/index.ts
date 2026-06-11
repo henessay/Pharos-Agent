@@ -18,6 +18,12 @@ export {
 } from "./deployments.js";
 // Risk engine
 export { aggregateVerdict, type GuardOptions, guardTransaction, hashIntent } from "./engine.js";
+// Errors
+export {
+  ContractsNotDeployedError,
+  type StructuredError,
+  toStructuredError,
+} from "./errors.js";
 // Explorer client
 export {
   createBlockscoutClient,
@@ -32,6 +38,20 @@ export {
   type GuardVerdict,
   type ProposedTransaction,
 } from "./guard.js";
+// On-chain queries
+export {
+  guardLogHistory,
+  type PolicyStatus,
+  policyStatus,
+  type VerdictEntry,
+} from "./queries.js";
+// Runtime client builders
+export {
+  accountFromEnv,
+  getPublicClient,
+  getWalletClient,
+  resolveRpcUrl,
+} from "./runtime.js";
 export {
   type DecodedCall,
   type DecodedKind,

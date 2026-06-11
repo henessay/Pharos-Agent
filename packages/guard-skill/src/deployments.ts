@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Address, isAddress } from "viem";
 import { PHAROS_TESTNET_CHAIN_ID } from "./chain.js";
+import { ContractsNotDeployedError } from "./errors.js";
 
 /** Resolved deployment record for a network. */
 export interface Deployments {
@@ -125,11 +126,7 @@ export function requireDeployments(opts: { file?: string } = {}): Deployments & 
 } {
   const d = loadDeployments(opts);
   if (!d.treasuryPolicy || !d.guardLog) {
-    throw new Error(
-      "Deployment addresses are not available. Deploy the contracts and sync " +
-        "packages/contracts/deployments/pharos-testnet.json, or set POLICY_ADDRESS / " +
-        "GUARDLOG_ADDRESS in the environment.",
-    );
+    throw new ContractsNotDeployedError();
   }
   return d as Deployments & { treasuryPolicy: Address; guardLog: Address };
 }

@@ -2,11 +2,25 @@
   "name": "@pharos-guard/agent",
   "version": "0.1.0",
   "private": true,
-  "description": "AI agent that uses the tx-guard firewall before sending Pharos transactions (placeholder).",
+  "description": "Demo treasurer agent that gates every Pharos payment through the tx-guard firewall (OpenAI function calling).",
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "echo \"@pharos-guard/agent: nothing to build yet\"",
-    "test": "echo \"@pharos-guard/agent: no tests yet\""
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "tsx src/index.ts",
+    "chat": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@pharos-guard/guard-skill": "workspace:*",
+    "openai": "^6.0.0",
+    "viem": "^2.40.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
   }
 }

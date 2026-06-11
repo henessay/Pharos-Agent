@@ -39,6 +39,47 @@ export const treasuryPolicyAbi = [
     ],
     outputs: [],
   },
+  {
+    type: "function",
+    name: "agent",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "owner",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "recipientWhitelist",
+    stateMutability: "view",
+    inputs: [{ name: "recipient", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "limits",
+    stateMutability: "view",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [
+      { name: "maxPerTx", type: "uint256" },
+      { name: "dailyLimit", type: "uint256" },
+    ],
+  },
+  {
+    type: "function",
+    name: "spentOnDay",
+    stateMutability: "view",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "day", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
 
 /** Minimal GuardLog ABI. */
@@ -60,6 +101,17 @@ export const guardLogAbi = [
     stateMutability: "view",
     inputs: [{ name: "reporter", type: "address" }],
     outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "event",
+    name: "VerdictLogged",
+    inputs: [
+      { name: "reporter", type: "address", indexed: true },
+      { name: "intentHash", type: "bytes32", indexed: true },
+      { name: "verdict", type: "uint8", indexed: false },
+      { name: "reason", type: "string", indexed: false },
+      { name: "timestamp", type: "uint256", indexed: false },
+    ],
   },
 ] as const;
 
