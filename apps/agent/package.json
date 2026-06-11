@@ -1,0 +1,12 @@
+{
+  "name": "@pharos-guard/agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI agent that uses the tx-guard firewall before sending Pharos transactions (placeholder).",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "echo \"@pharos-guard/agent: nothing to build yet\"",
+    "test": "echo \"@pharos-guard/agent: no tests yet\""
+  }
+}

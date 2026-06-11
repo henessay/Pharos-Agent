@@ -1,0 +1,13 @@
+{
+  "name": "@pharos-guard/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Treasury policy + guard-log contracts for Pharos Guard, built with Foundry.",
+  "license": "MIT",
+  "scripts": {
+    "build": "node ./scripts/forge.mjs build",
+    "test": "node ./scripts/forge.mjs test",
+    "fmt": "forge fmt",
+    "clean": "forge clean"
+  }
+}

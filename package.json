@@ -1,0 +1,21 @@
+{
+  "name": "pharos-guard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "tx-guard — a skill firewall that vets AI-agent transactions before they are sent, plus treasury policy contracts on the Pharos testnet.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present run build",
+    "test": "pnpm -r --if-present run test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.0"
+  }
+}

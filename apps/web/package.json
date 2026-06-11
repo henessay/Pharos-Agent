@@ -1,0 +1,12 @@
+{
+  "name": "@pharos-guard/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Web dashboard for the tx-guard firewall and treasury policies (placeholder).",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "echo \"@pharos-guard/web: nothing to build yet\"",
+    "test": "echo \"@pharos-guard/web: no tests yet\""
+  }
+}
