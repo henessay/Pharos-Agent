@@ -1,5 +1,7 @@
 # Pharos Guard — tx-guard
 
+[![CI](https://github.com/henessay/pharos-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/henessay/pharos-agent/actions/workflows/ci.yml)
+
 > A **transaction firewall** for AI agents on Pharos. An agent with a wallet is
 > one bad prompt away from draining a treasury; tx-guard puts a deterministic
 > gate in front of every transaction — simulate, decode, score six risk rules,
