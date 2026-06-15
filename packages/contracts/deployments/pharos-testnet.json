@@ -29,10 +29,11 @@
     }
   },
   "verification": {
-    "attempted": false,
+    "attempted": true,
+    "verified": false,
     "verifier": "blockscout",
     "verifierUrl": "https://atlantic.pharosscan.xyz/api",
-    "note": "Run from packages/contracts: forge verify-contract <address> src/TreasuryPolicy.sol:TreasuryPolicy --chain-id 688689 --verifier blockscout --verifier-url https://atlantic.pharosscan.xyz/api . If the verifier endpoint is unavailable, set \"attempted\": true and \"verified\": false here and record the failure reason."
+    "note": "Source verification attempted via forge verify-contract (blockscout, chain 688689) but the Pharosscan host (atlantic.pharosscan.xyz) sits behind a Vercel Security Checkpoint bot-challenge: the /api endpoint returns an HTML challenge page instead of a JSON API response, so forge fails with 'expected value at line 1 column 1'. The contracts are deployed and live on-chain; only public source verification is blocked. Retry if/when Pharosscan exposes a non-challenged Blockscout API endpoint."
   },
   "deployCommand": "AGENT_ADDRESS=0x... forge script script/Deploy.s.sol:Deploy --rpc-url \"$PHAROS_RPC_URL\" --private-key \"$PRIVATE_KEY\" --broadcast"
 }
