@@ -11,7 +11,7 @@
 
 One firewall, three surfaces: a **Pharos Skill**, an **MCP server**, and a demo
 **treasurer agent** — all backed by `TreasuryPolicy` + `GuardLog` contracts on
-the Pharos testnet (chain id `688688`).
+the Pharos testnet (chain id `688689`).
 
 ## Quick start
 
@@ -105,13 +105,13 @@ See [`packages/guard-skill/README.md`](packages/guard-skill/README.md).
 and gate your own `execute` path on `report.verdict === "allow"` (the demo agent
 in [`apps/agent`](apps/agent) does exactly this).
 
-## Pharos Testnet
+## Pharos Atlantic Testnet
 
 | Parameter | Value |
 |-----------|-------|
-| Chain id | `688688` (`0xa8230`) |
-| RPC URL | `https://testnet.dplabs-internal.com` |
-| Explorer | `https://testnet.pharosscan.xyz` |
+| Chain id | `688689` (`0xa8231`) |
+| RPC URL | `https://atlantic.dplabs-internal.com` |
+| Explorer | `https://atlantic.pharosscan.xyz` |
 | Native token | `PHRS` (18 decimals) |
 
 Chain def: [`packages/guard-skill/src/chain.ts`](packages/guard-skill/src/chain.ts).
@@ -126,18 +126,18 @@ AGENT_ADDRESS=0xYourAgent forge script script/Deploy.s.sol:Deploy \
 pnpm sync:deployments   # fills the address tables below from the deploy json
 ```
 
-### Deployed addresses — Pharos Testnet (chain id `688688`)
+### Deployed addresses — Pharos Atlantic Testnet (chain id `688689`)
 
 <!-- deployments:start -->
 | Contract | Address | Explorer | Verified |
 |----------|---------|----------|----------|
-| TreasuryPolicy | `pending` | — | ❌ |
-| GuardLog | `pending` | — | ❌ |
+| TreasuryPolicy | `0x479e566B027De29c6640A6234f22Cacb18bBD856` | [view](https://atlantic.pharosscan.xyz/address/0x479e566B027De29c6640A6234f22Cacb18bBD856) | ❌ |
+| GuardLog | `0xEe7b59f48A7b688e013104BAF0cDE6DB2F315E47` | [view](https://atlantic.pharosscan.xyz/address/0xEe7b59f48A7b688e013104BAF0cDE6DB2F315E47) | ❌ |
 <!-- deployments:end -->
 
 Addresses come only from
 `packages/contracts/deployments/pharos-testnet.json` (synced by
-`pnpm sync:deployments`); until then the core reports a structured
+`pnpm sync:deployments`); before a deploy the core reports a structured
 `contracts_not_deployed` ("deploy pending"). Remaining post-deploy steps:
 [`docs/post-deploy-checklist.md`](docs/post-deploy-checklist.md).
 
@@ -147,10 +147,10 @@ The contracts, risk engine, skill, MCP server, and demo agent in this repo were
 written during the hackathon period. The approach — a deterministic transaction
 firewall that vets agent actions before signing — builds on our prior experience
 designing transaction-screening and policy-enforcement systems; that background
-informed the design, but the code here is original to this submission. On-chain
-deployment to the Pharos testnet is pending (see the checklist above); every
-network-dependent surface degrades to a clear "deploy pending" state rather than
-faking results.
+informed the design, but the code here is original to this submission. The
+contracts are deployed on the Pharos Atlantic Testnet (chain id 688689; see the
+address table above); every network-dependent surface degrades to a clear
+"deploy pending" state rather than faking results when addresses are absent.
 
 ## License
 

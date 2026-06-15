@@ -13,7 +13,9 @@ import { type Deployments, loadDeployments } from "./deployments.js";
 
 /** Resolve the RPC URL from env or the deployments file. */
 export function resolveRpcUrl(deployments?: Deployments): string {
-  return process.env.PHAROS_RPC_URL ?? deployments?.rpcUrl ?? "https://testnet.dplabs-internal.com";
+  return (
+    process.env.PHAROS_RPC_URL ?? deployments?.rpcUrl ?? "https://atlantic.dplabs-internal.com"
+  );
 }
 
 /** Build a viem public client for the Pharos testnet. */

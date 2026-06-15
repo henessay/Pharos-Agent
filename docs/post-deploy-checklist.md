@@ -22,9 +22,9 @@ deployments file / env. One screen, top to bottom:
    verifier is unreachable, record it under `verification.note` in the json):
    ```bash
    forge verify-contract <policy>   src/TreasuryPolicy.sol:TreasuryPolicy \
-     --chain-id 688688 --verifier blockscout --verifier-url https://testnet.pharosscan.xyz/api
+     --chain-id 688689 --verifier blockscout --verifier-url https://atlantic.pharosscan.xyz/api
    forge verify-contract <guardLog> src/GuardLog.sol:GuardLog \
-     --chain-id 688688 --verifier blockscout --verifier-url https://testnet.pharosscan.xyz/api
+     --chain-id 688689 --verifier blockscout --verifier-url https://atlantic.pharosscan.xyz/api
    ```
 
 4. **Seed policy for the demo** (owner key):

@@ -60,7 +60,7 @@ suggests a bounded approval.
 > **Say:** "Every verdict the firewall makes can be logged on-chain."
 
 **Show:** open the **GuardLog** contract on the explorer
-(`https://testnet.pharosscan.xyz/address/<guardLog>`) and point at the
+(`https://atlantic.pharosscan.xyz/address/<guardLog>`) and point at the
 `VerdictLogged` events from Scene 2. Optionally run:
 ```bash
 node skill/scripts/log-history.mjs --limit 5

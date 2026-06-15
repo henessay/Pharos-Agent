@@ -32,19 +32,18 @@ The script deploys both contracts, seeds native limits (`maxPerTx` 1 PHRS,
 `dailyLimit` 5 PHRS), wires the agent, and writes
 [`deployments/pharos-testnet.json`](deployments/pharos-testnet.json).
 
-## Deployed addresses — Pharos Testnet (chain id `688688`)
+## Deployed addresses — Pharos Atlantic Testnet (chain id `688689`)
 
-> **Status: `pending_broadcast`.** Not yet deployed on-chain. The Pharos RPC
-> host is outside this build sandbox's network allowlist and no funded key is
-> available here, so the addresses below are filled in after a real broadcast
-> (see `deployments/pharos-testnet.json`). Explorer base:
-> <https://testnet.pharosscan.xyz>.
+> **Status: `deployed`.** Broadcast to the Pharos Atlantic Testnet
+> (chain id 688689). Addresses below are synced from
+> `deployments/pharos-testnet.json`. Explorer base:
+> <https://atlantic.pharosscan.xyz>.
 
 <!-- deployments:start -->
 | Contract | Address | Explorer | Verified |
 |----------|---------|----------|----------|
-| TreasuryPolicy | `pending` | — | ❌ |
-| GuardLog | `pending` | — | ❌ |
+| TreasuryPolicy | `0x479e566B027De29c6640A6234f22Cacb18bBD856` | [view](https://atlantic.pharosscan.xyz/address/0x479e566B027De29c6640A6234f22Cacb18bBD856) | ❌ |
+| GuardLog | `0xEe7b59f48A7b688e013104BAF0cDE6DB2F315E47` | [view](https://atlantic.pharosscan.xyz/address/0xEe7b59f48A7b688e013104BAF0cDE6DB2F315E47) | ❌ |
 <!-- deployments:end -->
 
 The table above is generated from `deployments/pharos-testnet.json`. After a
@@ -55,9 +54,9 @@ addresses are hand-edited.
 
 ```bash
 forge verify-contract <address> src/TreasuryPolicy.sol:TreasuryPolicy \
-  --chain-id 688688 \
+  --chain-id 688689 \
   --verifier blockscout \
-  --verifier-url https://testnet.pharosscan.xyz/api
+  --verifier-url https://atlantic.pharosscan.xyz/api
 ```
 
 If the Pharosscan verifier endpoint is unavailable, record it under

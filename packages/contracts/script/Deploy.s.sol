@@ -49,7 +49,7 @@ contract Deploy is Script {
         uint256 maxPerTx,
         uint256 dailyLimit
     ) internal {
-        string memory explorer = "https://testnet.pharosscan.xyz";
+        string memory explorer = "https://atlantic.pharosscan.xyz";
         string memory obj = "deployment";
 
         vm.serializeUint(obj, "chainId", block.chainid);

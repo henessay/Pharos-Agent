@@ -1,22 +1,24 @@
 {
   "network": "pharos-testnet",
-  "chainId": 688688,
-  "status": "pending_broadcast",
-  "note": "Contracts compile, tests pass (33/33, 100% branch coverage), and the deploy script was verified end-to-end against a local anvil. They are NOT yet broadcast to the Pharos testnet from this sandbox: the RPC host (testnet.dplabs-internal.com) is outside this environment's network allowlist, and no funded deployer/agent key is available here. To complete the deployment, run the command in `deployCommand` from an environment that can reach the RPC with a funded key; script/Deploy.s.sol overwrites the core fields of this file with the real addresses and deploy block.",
-  "rpcUrl": "https://testnet.dplabs-internal.com",
-  "explorer": "https://testnet.pharosscan.xyz",
-  "deployer": null,
-  "agent": null,
-  "deployBlock": null,
+  "chainId": 688689,
+  "status": "deployed",
+  "note": "Deployed to the Pharos Atlantic Testnet (chain id 688689). TreasuryPolicy + GuardLog broadcast via script/Deploy.s.sol with the agent wired and native limits seeded. The legacy Pharos Testnet (688688, testnet.dplabs-internal.com) is no longer reachable; Atlantic is the current developer testnet.",
+  "rpcUrl": "https://atlantic.dplabs-internal.com",
+  "explorer": "https://atlantic.pharosscan.xyz",
+  "deployer": "0x38a776ADaeDBAf5C940d1b44a57C62cd4966a945",
+  "agent": "0x38a776ADaeDBAf5C940d1b44a57C62cd4966a945",
+  "deployBlock": 24254745,
+  "treasuryPolicy": "0x479e566B027De29c6640A6234f22Cacb18bBD856",
+  "guardLog": "0xEe7b59f48A7b688e013104BAF0cDE6DB2F315E47",
   "contracts": {
     "treasuryPolicy": {
-      "address": null,
-      "explorerUrl": null,
+      "address": "0x479e566B027De29c6640A6234f22Cacb18bBD856",
+      "explorerUrl": "https://atlantic.pharosscan.xyz/address/0x479e566B027De29c6640A6234f22Cacb18bBD856",
       "verified": false
     },
     "guardLog": {
-      "address": null,
-      "explorerUrl": null,
+      "address": "0xEe7b59f48A7b688e013104BAF0cDE6DB2F315E47",
+      "explorerUrl": "https://atlantic.pharosscan.xyz/address/0xEe7b59f48A7b688e013104BAF0cDE6DB2F315E47",
       "verified": false
     }
   },
@@ -29,8 +31,8 @@
   "verification": {
     "attempted": false,
     "verifier": "blockscout",
-    "verifierUrl": "https://testnet.pharosscan.xyz/api",
-    "note": "Verifier availability was NOT confirmed from this sandbox — the explorer/API host is also outside the allowlist. After deploy, try: forge verify-contract <address> src/TreasuryPolicy.sol:TreasuryPolicy --chain-id 688688 --verifier blockscout --verifier-url https://testnet.pharosscan.xyz/api . If the verifier endpoint is unavailable, set \"attempted\": true and \"verified\": false here and record the failure reason."
+    "verifierUrl": "https://atlantic.pharosscan.xyz/api",
+    "note": "Run from packages/contracts: forge verify-contract <address> src/TreasuryPolicy.sol:TreasuryPolicy --chain-id 688689 --verifier blockscout --verifier-url https://atlantic.pharosscan.xyz/api . If the verifier endpoint is unavailable, set \"attempted\": true and \"verified\": false here and record the failure reason."
   },
   "deployCommand": "AGENT_ADDRESS=0x... forge script script/Deploy.s.sol:Deploy --rpc-url \"$PHAROS_RPC_URL\" --private-key \"$PRIVATE_KEY\" --broadcast"
 }

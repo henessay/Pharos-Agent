@@ -167,7 +167,7 @@ requires:
 - [ ] `SKILL.md` with the frontmatter above + body (Prerequisites, Capability
       Index, Security, Write Pre-checks, Error handling).
 - [ ] `assets/networks.json` — at minimum a `pharos-testnet` entry
-      (`chainId: 688688`, `rpcUrl`, `explorerUrl`). Mirrors the
+      (`chainId: 688689`, `rpcUrl`, `explorerUrl`). Mirrors the
       values in `packages/guard-skill/src/chain.ts`.
 - [ ] `assets/policy.example.json` — sample treasury policy (allowlist,
       per-tx limit).
@@ -226,7 +226,7 @@ by the reference, but good practice):
 - [ ] H1 title + one-line summary at the top of the body.
 - [ ] Capability Index routes each user need to a `references/*.md#anchor`.
 - [ ] Networks read from `assets/networks.json`, not hard-coded prose; testnet
-      `chainId` is **688688**.
+      `chainId` is **688689**.
 - [ ] Security section: never log/commit keys; confirm network before writes.
 - [ ] Every relative path referenced from `SKILL.md` exists.
 - [ ] Code-gen templates (if any) under `assets/templates/*.tpl` with

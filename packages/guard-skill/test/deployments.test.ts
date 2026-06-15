@@ -20,7 +20,7 @@ describe("loadDeployments", () => {
   it("reads the flat deploy-output schema", () => {
     const file = writeTemp({
       network: "pharos-testnet",
-      chainId: 688688,
+      chainId: 688689,
       treasuryPolicy: "0x1111111111111111111111111111111111111111",
       guardLog: "0x2222222222222222222222222222222222222222",
     });
@@ -35,7 +35,7 @@ describe("loadDeployments", () => {
   it("reads the rich pending schema with null addresses", () => {
     const file = writeTemp({
       network: "pharos-testnet",
-      chainId: 688688,
+      chainId: 688689,
       status: "pending_broadcast",
       contracts: { treasuryPolicy: { address: null }, guardLog: { address: null } },
     });
@@ -67,8 +67,8 @@ describe("loadDeployments", () => {
 
 describe("explorerAddressUrl", () => {
   it("builds an address URL without a double slash", () => {
-    expect(explorerAddressUrl("https://testnet.pharosscan.xyz/", "0xabc")).toBe(
-      "https://testnet.pharosscan.xyz/address/0xabc",
+    expect(explorerAddressUrl("https://atlantic.pharosscan.xyz/", "0xabc")).toBe(
+      "https://atlantic.pharosscan.xyz/address/0xabc",
     );
   });
 });

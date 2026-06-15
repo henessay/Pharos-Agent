@@ -23,10 +23,10 @@ const TOKEN = "0x000000000000000000000000000000000000C0DE" as Address;
 
 const deployments: Deployments = {
   network: "pharos-testnet",
-  chainId: 688688,
+  chainId: 688689,
   status: "deployed",
-  rpcUrl: "https://testnet.dplabs-internal.com",
-  explorer: "https://testnet.pharosscan.xyz",
+  rpcUrl: "https://atlantic.dplabs-internal.com",
+  explorer: "https://atlantic.pharosscan.xyz",
   treasuryPolicy: POLICY,
   guardLog: GUARDLOG,
   source: "test",
@@ -71,8 +71,8 @@ describe("hashIntent", () => {
   it("is deterministic and value-sensitive", () => {
     const a: GuardIntent = { from: AGENT, to: RECIPIENT, value: 1n };
     const b: GuardIntent = { from: AGENT, to: RECIPIENT, value: 2n };
-    expect(hashIntent(a, 688688)).toBe(hashIntent(a, 688688));
-    expect(hashIntent(a, 688688)).not.toBe(hashIntent(b, 688688));
+    expect(hashIntent(a, 688689)).toBe(hashIntent(a, 688689));
+    expect(hashIntent(a, 688689)).not.toBe(hashIntent(b, 688689));
   });
 });
 

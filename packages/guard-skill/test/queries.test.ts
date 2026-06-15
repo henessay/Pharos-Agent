@@ -1,8 +1,24 @@
+import { fileURLToPath } from "node:url";
 import { type Address, type PublicClient, parseEther } from "viem";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Deployments } from "../src/deployments.js";
 import { ContractsNotDeployedError } from "../src/errors.js";
 import { guardLogHistory, policyStatus } from "../src/queries.js";
+
+// When a query is given a deployments object without addresses it falls back to
+// requireDeployments(), which reads the on-disk file. Point that at a pending
+// (null-address) fixture so the "not deployed" assertions hold regardless of the
+// repo's real deployment state.
+const PENDING_FILE = fileURLToPath(new URL("./fixtures/pending-deployments.json", import.meta.url));
+let prevDeploymentsFile: string | undefined;
+beforeAll(() => {
+  prevDeploymentsFile = process.env.DEPLOYMENTS_FILE;
+  process.env.DEPLOYMENTS_FILE = PENDING_FILE;
+});
+afterAll(() => {
+  if (prevDeploymentsFile === undefined) delete process.env.DEPLOYMENTS_FILE;
+  else process.env.DEPLOYMENTS_FILE = prevDeploymentsFile;
+});
 
 const POLICY = "0x1111111111111111111111111111111111111111" as Address;
 const GUARDLOG = "0x2222222222222222222222222222222222222222" as Address;
@@ -11,10 +27,10 @@ const OWNER = "0x000000000000000000000000000000000000d00d" as Address;
 
 const deployed: Deployments = {
   network: "pharos-testnet",
-  chainId: 688688,
+  chainId: 688689,
   status: "deployed",
-  rpcUrl: "https://testnet.dplabs-internal.com",
-  explorer: "https://testnet.pharosscan.xyz",
+  rpcUrl: "https://atlantic.dplabs-internal.com",
+  explorer: "https://atlantic.pharosscan.xyz",
   treasuryPolicy: POLICY,
   guardLog: GUARDLOG,
   source: "test",

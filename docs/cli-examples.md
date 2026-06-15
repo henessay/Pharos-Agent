@@ -1,7 +1,7 @@
 # CLI examples — live testnet run
 
 End-to-end commands for exercising tx-guard against the **Pharos testnet**
-(chain id `688688`), plus a template to paste the real `live-check` output into.
+(chain id `688689`), plus a template to paste the real `live-check` output into.
 
 > The build sandbox cannot reach the Pharos RPC (network allowlist), so the
 > output blocks below are placeholders — run the commands locally and paste the
@@ -56,9 +56,9 @@ pnpm --filter @pharos-guard/guard-skill live-check
 
 ```text
 Pharos Guard — live check
-  network        : pharos-testnet (chainId 688688)
-  TreasuryPolicy : https://testnet.pharosscan.xyz/address/0x…
-  GuardLog       : https://testnet.pharosscan.xyz/address/0x…
+  network        : pharos-testnet (chainId 688689)
+  TreasuryPolicy : https://atlantic.pharosscan.xyz/address/0x…
+  GuardLog       : https://atlantic.pharosscan.xyz/address/0x…
   agent          : 0x…
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -25,7 +25,7 @@ export interface ExplorerClient {
 }
 
 interface BlockscoutOptions {
-  /** Full API base, e.g. https://testnet.pharosscan.xyz/api. */
+  /** Full API base, e.g. https://atlantic.pharosscan.xyz/api. */
   apiBase?: string;
   /** Explorer base used to derive `apiBase` when it is not given. */
   explorer?: string;
@@ -38,7 +38,7 @@ interface BlockscoutOptions {
 function resolveApiBase(opts: BlockscoutOptions): string {
   if (opts.apiBase) return opts.apiBase.replace(/\/+$/, "");
   if (process.env.EXPLORER_API_URL) return process.env.EXPLORER_API_URL.replace(/\/+$/, "");
-  const explorer = (opts.explorer ?? "https://testnet.pharosscan.xyz").replace(/\/+$/, "");
+  const explorer = (opts.explorer ?? "https://atlantic.pharosscan.xyz").replace(/\/+$/, "");
   return `${explorer}/api`;
 }
 

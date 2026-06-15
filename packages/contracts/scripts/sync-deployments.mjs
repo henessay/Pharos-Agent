@@ -15,12 +15,12 @@ const jsonPath = join(repoRoot, "packages/contracts/deployments/pharos-testnet.j
 
 const raw = JSON.parse(readFileSync(jsonPath, "utf8"));
 
-const explorer = (raw.explorer ?? "https://testnet.pharosscan.xyz").replace(/\/+$/, "");
+const explorer = (raw.explorer ?? "https://atlantic.pharosscan.xyz").replace(/\/+$/, "");
 const policy = raw.treasuryPolicy ?? raw.contracts?.treasuryPolicy?.address ?? null;
 const guardLog = raw.guardLog ?? raw.contracts?.guardLog?.address ?? null;
 const policyVerified = raw.contracts?.treasuryPolicy?.verified ?? false;
 const guardLogVerified = raw.contracts?.guardLog?.verified ?? false;
-const chainId = raw.chainId ?? 688688;
+const chainId = raw.chainId ?? 688689;
 
 function row(name, address, verified) {
   if (!address) return `| ${name} | \`pending\` | — | ❌ |`;

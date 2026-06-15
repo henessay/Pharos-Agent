@@ -21,7 +21,7 @@ requires:
 
 # tx-guard — Pharos transaction firewall
 
-Vet AI-agent transactions on the **Pharos testnet** (chain id `688688`) before
+Vet AI-agent transactions on the **Pharos testnet** (chain id `688689`) before
 they are signed. This skill wraps the `@pharos-guard/guard-skill` core: it
 simulates the call, decodes the calldata, scores six risk rules, checks the
 on-chain treasury policy, and can log the verdict to GuardLog.
@@ -46,7 +46,7 @@ on-chain treasury policy, and can log the verdict to GuardLog.
 ## Network configuration
 
 Network parameters live in [`assets/networks.json`](assets/networks.json)
-(`pharos-testnet`, chain id `688688`). Read `rpcUrl` / `explorerUrl` from there;
+(`pharos-testnet`, chain id `688689`). Read `rpcUrl` / `explorerUrl` from there;
 never hard-code them.
 
 ## Capability Index

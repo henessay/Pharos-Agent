@@ -60,7 +60,7 @@ Claude Code):
       "command": "node",
       "args": ["/absolute/path/to/Pharos-Agent/packages/guard-skill/bin/mcp.mjs"],
       "env": {
-        "PHAROS_RPC_URL": "https://testnet.dplabs-internal.com"
+        "PHAROS_RPC_URL": "https://atlantic.dplabs-internal.com"
         // optional: "POLICY_ADDRESS": "0x…", "GUARDLOG_ADDRESS": "0x…"
       }
     }

@@ -4,10 +4,10 @@ import { type Address, type PublicClient, parseEther, stringToHex } from "viem";
 /** Fixture addresses used only for the offline (GUARD_DRY_RUN=1) demo. */
 export const FIXTURE_DEPLOYMENTS: Deployments = {
   network: "pharos-testnet",
-  chainId: 688688,
+  chainId: 688689,
   status: "dry-run",
-  rpcUrl: "https://testnet.dplabs-internal.com",
-  explorer: "https://testnet.pharosscan.xyz",
+  rpcUrl: "https://atlantic.dplabs-internal.com",
+  explorer: "https://atlantic.pharosscan.xyz",
   treasuryPolicy: "0x000000000000000000000000000000000000a011" as Address,
   guardLog: "0x000000000000000000000000000000000000610c" as Address,
   source: "dry-run-fixture",

@@ -2,10 +2,10 @@
   "networks": [
     {
       "name": "pharos-testnet",
-      "rpcUrl": "https://testnet.dplabs-internal.com",
-      "chainId": 688688,
-      "explorerUrl": "https://testnet.pharosscan.xyz",
-      "explorerApiUrl": "https://testnet.pharosscan.xyz/api",
+      "rpcUrl": "https://atlantic.dplabs-internal.com",
+      "chainId": 688689,
+      "explorerUrl": "https://atlantic.pharosscan.xyz",
+      "explorerApiUrl": "https://atlantic.pharosscan.xyz/api",
       "nativeToken": "PHRS"
     }
   ],

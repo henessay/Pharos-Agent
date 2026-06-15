@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { PHAROS_TESTNET_CHAIN_ID, pharosTestnet } from "../src/chain.js";
 
 describe("pharosTestnet chain", () => {
-  it("has the correct chain id (688688 == 0xa8230)", () => {
-    expect(pharosTestnet.id).toBe(688688);
-    expect(PHAROS_TESTNET_CHAIN_ID).toBe(688688);
-    expect(pharosTestnet.id.toString(16)).toBe("a8230");
+  it("has the correct chain id (688689 == 0xa8231)", () => {
+    expect(pharosTestnet.id).toBe(688689);
+    expect(PHAROS_TESTNET_CHAIN_ID).toBe(688689);
+    expect(pharosTestnet.id.toString(16)).toBe("a8231");
   });
 
   it("uses PHRS as the native currency with 18 decimals", () => {
@@ -14,8 +14,8 @@ describe("pharosTestnet chain", () => {
   });
 
   it("points at the testnet RPC and explorer", () => {
-    expect(pharosTestnet.rpcUrls.default.http[0]).toBe("https://testnet.dplabs-internal.com");
-    expect(pharosTestnet.blockExplorers?.default.url).toBe("https://testnet.pharosscan.xyz");
+    expect(pharosTestnet.rpcUrls.default.http[0]).toBe("https://atlantic.dplabs-internal.com");
+    expect(pharosTestnet.blockExplorers?.default.url).toBe("https://atlantic.pharosscan.xyz");
   });
 
   it("is flagged as a testnet", () => {

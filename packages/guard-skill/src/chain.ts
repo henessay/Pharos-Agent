@@ -1,14 +1,15 @@
 import { defineChain } from "viem";
 
 /**
- * Pharos Testnet chain definition for viem.
+ * Pharos Atlantic Testnet chain definition for viem.
  *
- * Parameters verified against ChainList (https://chainlist.org/chain/688688)
- * and the Pharos developer docs. Chain id 688688 == 0xa8230.
+ * Parameters verified against ChainList (https://chainlist.org/chain/688689)
+ * and the Pharos developer docs. Chain id 688689 == 0xa8231. Atlantic is the
+ * current developer testnet; the legacy Pharos Testnet (688688) is retired.
  */
 export const pharosTestnet = defineChain({
-  id: 688688,
-  name: "Pharos Testnet",
+  id: 688689,
+  name: "Pharos Atlantic Testnet",
   nativeCurrency: {
     name: "Pharos",
     symbol: "PHRS",
@@ -16,17 +17,17 @@ export const pharosTestnet = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ["https://testnet.dplabs-internal.com"],
+      http: ["https://atlantic.dplabs-internal.com"],
     },
   },
   blockExplorers: {
     default: {
       name: "Pharosscan",
-      url: "https://testnet.pharosscan.xyz",
+      url: "https://atlantic.pharosscan.xyz",
     },
   },
   testnet: true,
 });
 
 /** Numeric chain id of the Pharos Testnet. */
-export const PHAROS_TESTNET_CHAIN_ID = 688688 as const;
+export const PHAROS_TESTNET_CHAIN_ID = 688689 as const;

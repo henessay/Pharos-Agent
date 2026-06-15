@@ -1,17 +1,25 @@
+import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // Spawn the real MCP server over stdio (via tsx) and drive it as a client.
-// Addresses are null in the repo, so every tool must reply contracts_not_deployed.
+// Point the server at a pending (null-address) deployments file so every tool
+// must reply contracts_not_deployed — independent of the repo's real deployment.
+const PENDING_FILE = fileURLToPath(new URL("./fixtures/pending-deployments.json", import.meta.url));
 let client: Client;
 
 beforeAll(async () => {
   const transport = new StdioClientTransport({
     command: "npx",
     args: ["tsx", "src/mcp.ts"],
-    // ensure the null-address path: don't inherit any POLICY_ADDRESS override
-    env: { ...process.env, POLICY_ADDRESS: "", GUARDLOG_ADDRESS: "" },
+    // ensure the null-address path: pending deployments file + no env overrides
+    env: {
+      ...process.env,
+      DEPLOYMENTS_FILE: PENDING_FILE,
+      POLICY_ADDRESS: "",
+      GUARDLOG_ADDRESS: "",
+    },
   });
   client = new Client({ name: "test-client", version: "0.0.0" });
   await client.connect(transport);

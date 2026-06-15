@@ -1,0 +1,9 @@
+{
+  "network": "pharos-testnet",
+  "chainId": 688689,
+  "status": "pending_broadcast",
+  "rpcUrl": "https://atlantic.dplabs-internal.com",
+  "explorer": "https://atlantic.pharosscan.xyz",
+  "treasuryPolicy": null,
+  "guardLog": null
+}
