@@ -21,43 +21,46 @@ requires:
 
 # tx-guard — Pharos transaction firewall
 
-Vet AI-agent transactions on the **Pharos testnet** (chain id `688689`) before
-they are signed. This skill wraps the `@pharos-guard/guard-skill` core: it
-simulates the call, decodes the calldata, scores six risk rules, checks the
-on-chain treasury policy, and can log the verdict to GuardLog.
+Vet AI-agent transactions on the **Pharos Atlantic Testnet** (chain id
+`688689`) before they are signed. This is the **standalone** build: the
+risk-engine core (including `viem`) is bundled into
+[`lib/guard-skill.mjs`](lib/guard-skill.mjs), so the scripts run anywhere —
+no install, no build step. It simulates the call, decodes the calldata,
+scores six risk rules, checks the on-chain treasury policy, and can log the
+verdict to GuardLog.
 
 ## Prerequisites
 
-1. **Build the core once** (the scripts import the compiled package):
-   ```bash
-   pnpm install && pnpm build
-   ```
-2. **Configure the network / signer** via environment variables:
-   - `PHAROS_RPC_URL` — Pharos testnet RPC (defaults to the public endpoint).
+1. **Node.js ≥ 20.** Nothing else — the core and all dependencies are bundled.
+2. **Configure the network / signer** via environment variables (all optional):
+   - `PHAROS_RPC_URL` — Pharos testnet RPC (defaults to the public Atlantic
+     endpoint from `assets/deployments.json`).
    - `PRIVATE_KEY` — agent key, required only for **On-chain Verdict Logging**.
-   - `POLICY_ADDRESS` / `GUARDLOG_ADDRESS` — optional overrides; otherwise
-     addresses are read from `packages/contracts/deployments/pharos-testnet.json`.
-
-> **Deploy pending:** until the contracts are deployed (addresses synced into
-> the deployments file), every capability returns a structured
-> `{ "error": "contracts_not_deployed", "message": "… deploy pending …" }`
-> instead of failing. This is expected, not a bug.
+   - `POLICY_ADDRESS` / `GUARDLOG_ADDRESS` — optional overrides; otherwise the
+     deployed addresses shipped in
+     [`assets/deployments.json`](assets/deployments.json) are used.
+   - `DEPLOYMENTS_FILE` — point at a different deployments JSON entirely.
 
 ## Network configuration
 
-Network parameters live in [`assets/networks.json`](assets/networks.json)
-(`pharos-testnet`, chain id `688689`). Read `rpcUrl` / `explorerUrl` from there;
-never hard-code them.
+Network parameters and the deployed contract addresses live in
+[`assets/networks.json`](assets/networks.json) and
+[`assets/deployments.json`](assets/deployments.json) (`pharos-testnet`, chain
+id `688689`; TreasuryPolicy `0x479e566B027De29c6640A6234f22Cacb18bBD856`,
+GuardLog `0xEe7b59f48A7b688e013104BAF0cDE6DB2F315E47`). Read values from those
+files; never hard-code them.
 
 ## Capability Index
 
+Run every command from this skill's directory (paths are relative to it).
+
 | User need | Capability | How to run | Reference |
 |-----------|------------|-----------|-----------|
-| Simulate a transaction (will it revert?) | **Simulate Transaction** | `node skill/scripts/guard-check.mjs --from <a> --to <b> [--value <wei>] [--data <hex>]` | [risk-rules.md#sim_revert](references/risk-rules.md#sim_revert) |
+| Simulate a transaction (will it revert?) | **Simulate Transaction** | `node scripts/guard-check.mjs --from <a> --to <b> [--value <wei>] [--data <hex>]` | [risk-rules.md#sim_revert](references/risk-rules.md#sim_revert) |
 | Decode calldata + score risks | **Decode & Risk-Check Calldata** | same `guard-check.mjs` (returns `decoded` + `risks[]`) | [risk-rules.md#rules](references/risk-rules.md#rules) |
-| Check a payment against treasury limits | **Treasury Policy Check** | `guard-check.mjs` with an `executePayment` `--data`, or `node skill/scripts/policy-status.mjs` | [risk-rules.md#policy_violation](references/risk-rules.md#policy_violation) |
-| Record a verdict on-chain | **On-chain Verdict Logging** | `node skill/scripts/guard-check.mjs … --log` (needs `PRIVATE_KEY`) | [risk-rules.md#logging](references/risk-rules.md#logging) |
-| Audit past verdicts | History | `node skill/scripts/log-history.mjs [--reporter <a>] [--limit <n>]` | [risk-rules.md#logging](references/risk-rules.md#logging) |
+| Check a payment against treasury limits | **Treasury Policy Check** | `guard-check.mjs` with an `executePayment` `--data`, or `node scripts/policy-status.mjs` | [risk-rules.md#policy_violation](references/risk-rules.md#policy_violation) |
+| Record a verdict on-chain | **On-chain Verdict Logging** | `node scripts/guard-check.mjs … --log` (needs `PRIVATE_KEY`) | [risk-rules.md#logging](references/risk-rules.md#logging) |
+| Audit past verdicts | History | `node scripts/log-history.mjs [--reporter <a>] [--limit <n>]` | [risk-rules.md#logging](references/risk-rules.md#logging) |
 
 The agent reads the JSON these scripts print and explains the verdict to the
 user. On `block`, do not proceed. On `warn`, surface the risks and ask the user

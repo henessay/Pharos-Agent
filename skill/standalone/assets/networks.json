@@ -1,0 +1,17 @@
+{
+  "networks": [
+    {
+      "name": "pharos-testnet",
+      "rpcUrl": "https://atlantic.dplabs-internal.com",
+      "chainId": 688689,
+      "explorerUrl": "https://atlantic.pharosscan.xyz",
+      "explorerApiUrl": "https://atlantic.pharosscan.xyz/api",
+      "nativeToken": "PHRS",
+      "contracts": {
+        "treasuryPolicy": "0x479e566B027De29c6640A6234f22Cacb18bBD856",
+        "guardLog": "0xEe7b59f48A7b688e013104BAF0cDE6DB2F315E47"
+      }
+    }
+  ],
+  "defaultNetwork": "pharos-testnet"
+}
