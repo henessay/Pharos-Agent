@@ -1,8 +1,8 @@
 {
   "name": "tx-guard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Standalone tx-guard skill package — the risk-engine core (incl. viem) is bundled into lib/guard-skill.mjs, so the scripts run with Node >= 20 alone: no install, no build step.",
+  "description": "Standalone tx-guard skill package — the risk-engine core (incl. viem) is bundled into lib/guard-skill.mjs, so the scripts run with Node >= 20 alone: no install, no build step. Includes guarded FaroSwap DeFi wrappers (quote / swap / add & remove liquidity).",
   "license": "MIT",
   "type": "module",
   "engines": {

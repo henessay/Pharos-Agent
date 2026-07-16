@@ -116,4 +116,36 @@ describe("guardLogHistory", () => {
       guardLogHistory({ publicClient: client, deployments: pending }),
     ).rejects.toBeInstanceOf(ContractsNotDeployedError);
   });
+
+  it("falls back to windowed scans when the RPC caps the getLogs range", async () => {
+    const entry = {
+      args: { reporter: AGENT, intentHash: "0xcc", verdict: 1, reason: "warn", timestamp: 3n },
+      blockNumber: 4_500n,
+      transactionHash: "0x30",
+    };
+    const ranges: Array<[bigint, bigint | "latest"]> = [];
+    const client = {
+      getBlockNumber: async () => 5_000n,
+      getLogs: async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint | "latest" }) => {
+        ranges.push([fromBlock, toBlock]);
+        if (toBlock === "latest") throw new Error("block range is too large");
+        if (entry.blockNumber >= fromBlock && entry.blockNumber <= toBlock) return [entry];
+        return [];
+      },
+    } as unknown as PublicClient;
+
+    const history = await guardLogHistory({
+      publicClient: client,
+      deployments: deployed,
+      limit: 5,
+    });
+    expect(history).toHaveLength(1);
+    expect(history[0]?.blockNumber).toBe(4_500n);
+    // first attempt was the capped full range; the windows that follow are ≤1000 blocks
+    expect(ranges[0]?.[1]).toBe("latest");
+    for (const [from, to] of ranges.slice(1)) {
+      expect(typeof to).toBe("bigint");
+      expect((to as bigint) - from).toBeLessThanOrEqual(999n);
+    }
+  });
 });

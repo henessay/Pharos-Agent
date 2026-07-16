@@ -1,5 +1,7 @@
 import {
   type Deployments,
+  type DexProvider,
+  type ExplorerClient,
   erc20Abi,
   type GuardIntent,
   type GuardReport,
@@ -25,9 +27,11 @@ import { type Decision, decideAction } from "./decide.js";
 import {
   defaultFixtureState,
   FIXTURE_DEPLOYMENTS,
+  FIXTURE_EXPLORER,
   type FixturePolicyState,
   fixturePolicyStatus,
   makeDryRunClient,
+  makeFixtureDexProvider,
 } from "./fixtures.js";
 import type { ProposedIntent } from "./propose.js";
 
@@ -41,6 +45,10 @@ export interface AgentContext {
   publicClient: PublicClient;
   walletClient: WalletClient | null;
   fixtureState?: FixturePolicyState;
+  /** DEX provider override; dry-run installs an offline fixture provider. */
+  dexProvider?: DexProvider;
+  /** Explorer override; dry-run installs an offline stub (rules degrade to "skipped"). */
+  explorer?: ExplorerClient;
 }
 
 /** Build the agent context from the environment. `GUARD_DRY_RUN=1` → offline. */
@@ -55,6 +63,8 @@ export function createContext(): AgentContext {
       publicClient: makeDryRunClient(fixtureState),
       walletClient: null,
       fixtureState,
+      dexProvider: makeFixtureDexProvider(),
+      explorer: FIXTURE_EXPLORER,
     };
   }
   const deployments = loadDeployments();
@@ -94,6 +104,7 @@ export async function guardCheck(intent: ProposedIntent, ctx: AgentContext): Pro
   return guardTransaction(guardIntent, {
     publicClient: ctx.publicClient,
     deployments: ctx.deployments,
+    ...(ctx.explorer ? { explorer: ctx.explorer } : {}),
   });
 }
 

@@ -4,10 +4,13 @@
 
 > A **transaction firewall** for AI agents on Pharos. An agent with a wallet is
 > one bad prompt away from draining a treasury; tx-guard puts a deterministic
-> gate in front of every transaction — simulate, decode, score six risk rules,
-> check the on-chain treasury policy, and return **allow / warn / block** before
-> anything is signed — then logs the verdict on-chain for a tamper-evident audit
-> trail. Submission for the **Pharos AI Agent Carnival — Phase 1 (Skill Hackathon)**.
+> gate in front of every transaction — simulate, decode, score eleven risk rules
+> (six base + five DEX), check the on-chain treasury policy, and return
+> **allow / warn / block** before anything is signed — then logs the verdict
+> on-chain for a tamper-evident audit trail. Now with **guarded DeFi execution**
+> on FaroSwap: swaps and LP management that cannot bypass the firewall —
+> [proven with a live on-chain swap](docs/faroswap-live-swap.md).
+> Submission for the **Pharos AI Agent Carnival — Phase 1 (Skill Hackathon)**.
 
 One firewall, three surfaces: a **Pharos Skill**, an **MCP server**, and a demo
 **treasurer agent** — all backed by `TreasuryPolicy` + `GuardLog` contracts on
@@ -18,7 +21,7 @@ the Pharos testnet (chain id `688689`).
 ```bash
 pnpm install
 pnpm build
-pnpm test     # 95 tests: contracts (forge) + guard-skill + agent (vitest)
+pnpm test     # 153 tests: contracts (forge) + guard-skill + agent (vitest)
 ```
 
 Then try the firewall offline (no RPC, no keys) via the demo agent's fixtures:
@@ -41,7 +44,7 @@ flowchart LR
 
   subgraph S[tx-guard skill / guard-skill core]
     direction TB
-    D[decode calldata] --> R[6 risk rules]
+    D[decode calldata] --> R[11 risk rules<br/>6 base + 5 DEX]
     SIM[simulate eth_call] --> R
     R --> V{verdict<br/>allow / warn / block}
   end
@@ -53,9 +56,43 @@ flowchart LR
   V -->|block| A
 ```
 
-The six rules: **SIM_REVERT**, **UNLIMITED_APPROVE**, **UNVERIFIED_CONTRACT**,
-**FIRST_INTERACTION**, **POLICY_VIOLATION**, **HIGH_VALUE**. Explorer-dependent
-rules degrade gracefully (skipped, never fatal) when the API is unavailable.
+The six base rules: **SIM_REVERT**, **UNLIMITED_APPROVE**, **UNVERIFIED_CONTRACT**,
+**FIRST_INTERACTION**, **POLICY_VIOLATION**, **HIGH_VALUE**. For DEX intents five
+more run: **ROUTER_ALLOWLIST**, **EXACT_APPROVE**, **SLIPPAGE_BOUND**,
+**PRICE_IMPACT**, **LP_RECOGNITION**. Explorer-dependent rules degrade gracefully
+(skipped, never fatal) when the API is unavailable.
+
+## DeFi capabilities (FaroSwap)
+
+The agent can now trade on [FaroSwap](https://faroswap.xyz) (DODO fork on
+Atlantic) — every action passes the **full firewall**, including its approvals,
+with no code path around it:
+
+- **`get_quote`** — route-API quote (expected out, min return, price impact, route). Read-only.
+- **`swap_tokens`** — swap PHRS/WPHRS/USDC/USDT. A second, independently fetched
+  quote is the slippage reference (SLIPPAGE_BOUND); calldata must target the
+  verified `DODOFeeRouteProxy` (ROUTER_ALLOWLIST); ERC-20 inputs get
+  exact-amount approvals only (EXACT_APPROVE).
+- **`add_liquidity` / `remove_liquidity`** — full-range V3 positions via the
+  verified position manager; LP_RECOGNITION blocks any calldata whose recipient
+  is not the agent itself.
+
+Verdict gate (enforced in code, not prompts): `allow` → execute and show the
+explorer link; `warn` → surface the risks and require an explicit y/n; `block` →
+never executes, with the reason and a fix hint. The standalone skill ships the
+same flows as zero-dependency scripts (`dex-quote`, `dex-swap`,
+`dex-add-liquidity`, `dex-remove-liquidity`).
+
+**Proven live on Atlantic (2026-07-16)** — full guard pipeline → verdict
+logged to GuardLog → 0.01 PHRS swapped to 0.016532 USDC through the verified
+RouteProxy:
+
+| | |
+|---|---|
+| Swap tx | [`0x8681…95af`](https://atlantic.pharosscan.xyz/tx/0x868149e83de3164dd2fa7d2f1a1a02f7b8ab5eec8b895d7f36c28005114895af) |
+| GuardLog verdict tx | [`0xc231…03df`](https://atlantic.pharosscan.xyz/tx/0xc2319e0ed80d035e5a9f08ad34a0b261c81d85a6267ec98a3a6ba682f4b403df) |
+| Full report | [`docs/faroswap-live-swap.md`](docs/faroswap-live-swap.md) |
+| Address verification | [`docs/faroswap-verification.md`](docs/faroswap-verification.md) |
 
 ## Layout
 

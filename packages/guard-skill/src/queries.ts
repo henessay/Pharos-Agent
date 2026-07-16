@@ -107,8 +107,22 @@ export async function policyStatus(opts: QueryOpts): Promise<PolicyStatus> {
   };
 }
 
+/** Window size for the chunked getLogs fallback (zan.top caps ranges at 1000). */
+const LOG_WINDOW = 999n;
+/** Upper bound on fallback windows scanned backwards (~60k blocks). */
+const MAX_LOG_WINDOWS = 60;
+
+type RawLog = Awaited<ReturnType<PublicClient["getLogs"]>>[number] & {
+  args: Record<string, unknown>;
+};
+
 /**
  * Fetch GuardLog `VerdictLogged` events, most recent first.
+ *
+ * Tries one full-range `eth_getLogs` first; when the RPC rejects it (many
+ * public endpoints cap the block range, e.g. at 1000 blocks), scans backwards
+ * from the latest block in windows until `limit` entries are collected or
+ * {@link MAX_LOG_WINDOWS} windows have been searched.
  *
  * @param opts.reporter Filter to a single reporter (optional).
  * @param opts.limit Max entries to return (default 25).
@@ -120,14 +134,30 @@ export async function guardLogHistory(
 ): Promise<VerdictEntry[]> {
   const guardLog = resolveDeployed(opts.deployments).guardLog;
   const limit = opts.limit ?? 25;
+  const floor = opts.fromBlock ?? 0n;
 
-  const logs = await opts.publicClient.getLogs({
-    address: guardLog,
-    event: VERDICT_LOGGED_EVENT,
-    args: opts.reporter ? { reporter: opts.reporter } : {},
-    fromBlock: opts.fromBlock ?? 0n,
-    toBlock: "latest",
-  });
+  const getLogs = (fromBlock: bigint, toBlock: bigint | "latest") =>
+    opts.publicClient.getLogs({
+      address: guardLog,
+      event: VERDICT_LOGGED_EVENT,
+      args: opts.reporter ? { reporter: opts.reporter } : {},
+      fromBlock,
+      toBlock,
+    }) as Promise<RawLog[]>;
+
+  let logs: RawLog[];
+  try {
+    logs = await getLogs(floor, "latest");
+  } catch {
+    logs = [];
+    let to = await opts.publicClient.getBlockNumber();
+    for (let i = 0; i < MAX_LOG_WINDOWS && to >= floor && logs.length < limit; i++) {
+      const from = to > LOG_WINDOW ? to - LOG_WINDOW : 0n;
+      logs.push(...(await getLogs(from > floor ? from : floor, to)));
+      if (from <= floor) break;
+      to = from - 1n;
+    }
+  }
 
   const entries: VerdictEntry[] = logs.map((log) => ({
     reporter: log.args.reporter as Address,

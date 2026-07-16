@@ -1,5 +1,28 @@
-import { type Deployments, NATIVE_TOKEN, type PolicyStatus } from "@pharos-guard/guard-skill";
-import { type Address, type PublicClient, parseEther, stringToHex } from "viem";
+import {
+  DEX_NATIVE_SENTINEL,
+  type Deployments,
+  type DexProvider,
+  type DexQuote,
+  DODO_ROUTE_PROXY,
+  dodoRouteProxyAbi,
+  type ExplorerClient,
+  FaroswapProvider,
+  NATIVE_TOKEN,
+  type PolicyStatus,
+  type QuoteParams,
+  USDC,
+  USDT,
+  WPHRS,
+} from "@pharos-guard/guard-skill";
+import {
+  type Address,
+  encodeFunctionData,
+  formatUnits,
+  type PublicClient,
+  parseEther,
+  parseUnits,
+  stringToHex,
+} from "viem";
 
 /** Fixture addresses used only for the offline (GUARD_DRY_RUN=1) demo. */
 export const FIXTURE_DEPLOYMENTS: Deployments = {
@@ -79,6 +102,102 @@ export function makeDryRunClient(state: FixturePolicyState): PublicClient {
       }
     },
   } as unknown as PublicClient;
+}
+
+/**
+ * Offline explorer stub so dry-run guard checks never touch the network:
+ * both lookups degrade to `available: false`, which the rules report as
+ * "skipped" rather than failing.
+ */
+export const FIXTURE_EXPLORER: ExplorerClient = {
+  getSourceCode: async () => ({ available: false, error: "dry-run" }),
+  getTxList: async () => ({ available: false, error: "dry-run" }),
+};
+
+/** USD prices / decimals the fixture quotes are computed from. */
+const FIXTURE_TOKENS: Record<string, { decimals: number; usd: number }> = {
+  [DEX_NATIVE_SENTINEL.toLowerCase()]: { decimals: 18, usd: 1.6532 }, // PHRS (live-swap rate)
+  [WPHRS.toLowerCase()]: { decimals: 18, usd: 1.6532 },
+  [USDC.toLowerCase()]: { decimals: 6, usd: 1 },
+  [USDT.toLowerCase()]: { decimals: 6, usd: 1 },
+};
+
+const FIXTURE_POOL = "0x00000000000000000000000000000000000000d1" as Address;
+const FIXTURE_DEADLINE = 4_000_000_000n; // far future, keeps fixtures deterministic
+
+function isNativeSentinel(token: Address): boolean {
+  return token.toLowerCase() === DEX_NATIVE_SENTINEL.toLowerCase();
+}
+
+/**
+ * Offline DexProvider for GUARD_DRY_RUN: quotes are computed from fixed USD
+ * rates and the swap calldata is a real, decodable `mixSwap` encoding, so the
+ * genuine DEX guard rules (SLIPPAGE_BOUND, PRICE_IMPACT, …) run end-to-end.
+ * LP builds delegate to the real FaroswapProvider (they are pure functions).
+ */
+export function makeFixtureDexProvider(): DexProvider {
+  const inner = new FaroswapProvider({ now: () => Number(FIXTURE_DEADLINE) - 1200 });
+
+  return {
+    name: "faroswap",
+    chainId: 688689,
+
+    async getQuote(params: QuoteParams): Promise<DexQuote> {
+      const from = FIXTURE_TOKENS[params.fromToken.toLowerCase()];
+      const to = FIXTURE_TOKENS[params.toToken.toLowerCase()];
+      if (!from || !to) throw new Error(`fixture provider: unknown token pair`);
+
+      const fromHuman = Number(formatUnits(params.fromAmount, from.decimals));
+      const toHuman = (fromHuman * from.usd) / to.usd;
+      const toAmount = parseUnits(toHuman.toFixed(to.decimals), to.decimals);
+      const keepBps = BigInt(Math.round((100 - params.slippagePct) * 100));
+      const minReturnAmount = (toAmount * keepBps) / 10_000n;
+
+      const data = encodeFunctionData({
+        abi: dodoRouteProxyAbi,
+        functionName: "mixSwap",
+        args: [
+          params.fromToken,
+          params.toToken,
+          params.fromAmount,
+          toAmount,
+          minReturnAmount,
+          [],
+          [],
+          [],
+          0n,
+          [],
+          "0x",
+          FIXTURE_DEADLINE,
+        ],
+      });
+
+      return {
+        fromToken: params.fromToken,
+        toToken: params.toToken,
+        fromAmount: params.fromAmount,
+        toAmount,
+        minReturnAmount,
+        priceImpact: 0,
+        route: [
+          {
+            fromToken: params.fromToken,
+            toToken: params.toToken,
+            pools: [{ pool: FIXTURE_POOL, poolName: "DODOAmmV2" }],
+          },
+        ],
+        to: DODO_ROUTE_PROXY,
+        data,
+        value: isNativeSentinel(params.fromToken) ? params.fromAmount : 0n,
+        raw: { fixture: true },
+      };
+    },
+
+    buildSwapTx: (quote) => inner.buildSwapTx(quote),
+    buildAddLiquidityTx: (params) => inner.buildAddLiquidityTx(params),
+    buildRemoveLiquidityTx: (params) =>
+      inner.buildRemoveLiquidityTx({ ...params, liquidity: params.liquidity ?? 10n ** 15n }),
+  };
 }
 
 /** Fixture PolicyStatus matching the dry-run state. */
