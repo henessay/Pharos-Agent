@@ -126,7 +126,13 @@ describe("guardLogHistory", () => {
     const ranges: Array<[bigint, bigint | "latest"]> = [];
     const client = {
       getBlockNumber: async () => 5_000n,
-      getLogs: async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint | "latest" }) => {
+      getLogs: async ({
+        fromBlock,
+        toBlock,
+      }: {
+        fromBlock: bigint;
+        toBlock: bigint | "latest";
+      }) => {
         ranges.push([fromBlock, toBlock]);
         if (toBlock === "latest") throw new Error("block range is too large");
         if (entry.blockNumber >= fromBlock && entry.blockNumber <= toBlock) return [entry];

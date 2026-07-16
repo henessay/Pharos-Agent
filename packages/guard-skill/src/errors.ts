@@ -28,6 +28,20 @@ export class QuoteUnavailableError extends Error {
   }
 }
 
+/** Error thrown when no market-data provider can produce usable data. */
+export class MarketDataUnavailableError extends Error {
+  /** Stable, machine-readable code surfaced to MCP / agent consumers. */
+  readonly code = "market_data_unavailable";
+  /** What failed on the last attempt (timeout, HTTP status, API error…). */
+  readonly cause?: unknown;
+
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = "MarketDataUnavailableError";
+    this.cause = cause;
+  }
+}
+
 /** Structured error payload returned by MCP tools / wrappers instead of throwing. */
 export interface StructuredError {
   error: string;
@@ -36,7 +50,11 @@ export interface StructuredError {
 
 /** Convert any error into a {@link StructuredError}; known error codes are preserved. */
 export function toStructuredError(err: unknown): StructuredError {
-  if (err instanceof ContractsNotDeployedError || err instanceof QuoteUnavailableError) {
+  if (
+    err instanceof ContractsNotDeployedError ||
+    err instanceof QuoteUnavailableError ||
+    err instanceof MarketDataUnavailableError
+  ) {
     return { error: err.code, message: err.message };
   }
   const message = err instanceof Error ? err.message : String(err);

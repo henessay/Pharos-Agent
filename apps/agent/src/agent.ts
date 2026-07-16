@@ -1,10 +1,11 @@
 import { createInterface } from "node:readline/promises";
 import { toStructuredError } from "@pharos-guard/guard-skill";
 import OpenAI from "openai";
-import { bold, colorVerdict, cyan, gray, green, red } from "./colors.js";
+import { bold, colorVerdict, cyan, gray, green, red, yellow } from "./colors.js";
 import { decideAction, fixHint } from "./decide.js";
 import {
   addLiquidity,
+  checkSwap,
   getQuote,
   parseAddLiquidityIntent,
   parseRemoveLiquidityIntent,
@@ -12,6 +13,7 @@ import {
   removeLiquidity,
   swapTokens,
 } from "./dex.js";
+import { marketOverview, suggestAllocation, tokenInfo } from "./market.js";
 import { isProposeError, parseIntent } from "./propose.js";
 import {
   type AgentContext,
@@ -21,26 +23,34 @@ import {
   guardCheck,
 } from "./tools.js";
 
-const SYSTEM_PROMPT = `You are a Pharos treasury agent. You move PHRS out of a TreasuryPolicy contract on the Pharos testnet on the user's behalf. You can also trade on FaroSwap: swap between PHRS, WPHRS, USDC and USDT (get_quote / swap_tokens) and manage full-range LP positions (add_liquidity / remove_liquidity).
+export const SYSTEM_PROMPT = `You are a Pharos treasury agent and Guarded DeFi Advisor. You move PHRS out of a TreasuryPolicy contract on the Pharos testnet on the user's behalf, trade on FaroSwap (swap between PHRS, WPHRS, USDC and USDT via get_quote / swap_tokens; manage full-range LP positions via add_liquidity / remove_liquidity), and provide market analytics (market_overview / token_info / suggest_allocation).
+
+Routing: a PAYMENT sends tokens TO someone else (needs a recipient address) — use propose_payment / guard_check / execute_payment. A SWAP exchanges one token for another with no recipient (the output lands in the agent's own wallet) — use get_quote / swap_tokens directly; the firewall runs inside those tools, so do NOT call guard_check or propose_payment for swaps or liquidity.
+
+Advisor rules (market analytics):
+A. NEVER give direct buy/sell recommendations — no "buy X", "sell Y", "you should invest in Z". Present market DATA and frame candidates strictly as "options that match your profile". The final decision is always the user's.
+B. suggest_allocation REQUIRES a risk level. If the user has not stated one, ASK them to choose — low (capital preservation), medium (balanced), or high (aggressive) — before calling the tool. Never assume or invent a risk profile.
+C. End EVERY market-analytics answer with exactly: "This is market data, not financial advice. Always do your own research."
+D. If you are deployed without wallet access (marketplace/advisor deployment), you cannot execute swaps: return the guarded quote (verdict, min return, price impact) and redirect execution to the open-source package at https://github.com/henessay/Pharos-Agent. With wallet access (this CLI), the normal confirmed swap flow applies.
 
 Hard rules (a firewall enforces these in code too):
-1. NEVER call execute_payment without first calling guard_check on the same request.
+1. NEVER call execute_payment without first calling guard_check on the same request. (Payments only — DeFi tools embed their own guard check.)
 2. If the guard verdict is "allow": execute the payment, then show the block-explorer link.
 3. If the verdict is "warn": show the risks and ask the user to confirm with y/n BEFORE executing.
 4. If the verdict is "block": do NOT execute. Explain the blocking reason and how to fix it.
 5. Use policy_status whenever the user asks about limits, daily spend, or balance.
 6. Every DeFi action (swap, add/remove liquidity) runs the full tx-guard firewall INSIDE the tool — including its approvals. You never execute around the firewall, and there is no way to skip it.
-7. When a DeFi tool returns decision.action "confirm" (a warn verdict): show the triggered risks, ask y/n, and only after an explicit "y" call the SAME tool again with confirmed=true. Never set confirmed=true on the first call.
+7. Swaps ALWAYS need the user's explicit confirmation, even on an "allow" verdict. For any swap request, FIRST call swap_tokens WITHOUT confirmed — it never sends and returns the firewall GuardReport (get_quote alone is NOT enough: it has no verdict). Present the report (VERDICT, expected output, minimum return, price impact, route), ask y/n, and only after an explicit "y" call swap_tokens again with confirmed=true. The same applies to any DeFi tool returning decision.action "confirm". Never set confirmed=true on the first call, and never treat silence as consent.
 8. On an executed action, always show the transaction hash link; on "block", relay the reason and the fix hint.
 Be concise. Always state the verdict explicitly.`;
 
-const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+export const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
       name: "propose_payment",
       description:
-        "Parse a natural-language payment or approval request into a structured intent (preview only, no on-chain effect).",
+        "Parse a natural-language PAYMENT or approval request — sending tokens TO someone (needs a recipient 0x address) — into a structured intent (preview only, no on-chain effect). NOT for token swaps: those have no recipient — use swap_tokens.",
       parameters: {
         type: "object",
         properties: { text: { type: "string", description: "The user's request verbatim." } },
@@ -53,7 +63,7 @@ const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "guard_check",
       description:
-        "Run the tx-guard firewall over the request and return the verdict (allow/warn/block) with risks. Call this before any execution.",
+        "Run the tx-guard firewall over a PAYMENT or approval request and return the verdict (allow/warn/block) with risks. Call this before execute_payment. Swaps and liquidity do NOT need it — their tools run the firewall internally (a swap phrase passed here is checked as a swap, without executing).",
       parameters: {
         type: "object",
         properties: { text: { type: "string", description: "The user's request verbatim." } },
@@ -105,7 +115,7 @@ const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "swap_tokens",
       description:
-        "Swap PHRS/WPHRS/USDC/USDT on FaroSwap. Runs the full tx-guard firewall (base + DEX rules) over the swap and its approvals first; executes only on an allow verdict (or a warn the user explicitly confirmed).",
+        "Exchange one token for another (PHRS/WPHRS/USDC/USDT) on FaroSwap — no recipient needed, the output goes to the agent's own wallet. Use for any 'swap/exchange/convert X to Y' request. The full tx-guard firewall (base + DEX rules) runs INSIDE this tool over the swap and its approvals — do not call guard_check first. The FIRST call never sends: it returns the GuardReport + quote for the user to confirm. Only after the user explicitly says yes, call again with confirmed=true to execute (block verdicts never execute).",
       parameters: {
         type: "object",
         properties: {
@@ -116,7 +126,7 @@ const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           confirmed: {
             type: "boolean",
             description:
-              "Set true ONLY after the user explicitly answered 'y' to a warn verdict for this exact request.",
+              "Set true ONLY after the user explicitly answered 'y' to the GuardReport shown for this exact swap. Never on the first call.",
           },
         },
         required: ["text"],
@@ -169,19 +179,79 @@ const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "market_overview",
+      description:
+        "Top coins by market cap with USD prices and 24h/7d/30d changes. Read-only public market data — end the answer with the standard disclaimer.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "How many coins to return (default 10)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "token_info",
+      description:
+        "Detailed market data for one coin: USD price, 24h/7d/30d changes, market cap, rank. Read-only — end the answer with the standard disclaimer.",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: { type: "string", description: "Ticker symbol, e.g. 'BTC'." },
+        },
+        required: ["symbol"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "suggest_allocation",
+      description:
+        "Risk-profiled allocation IDEAS: 3-4 coins WITH market data (price, 7d/30d change, market cap) matching a risk level (low → stablecoins + BTC/ETH; medium → top-20; high → smaller caps / newer ecosystems). risk_level is REQUIRED — if the user has not stated their risk profile, ASK them (low/medium/high) BEFORE calling this. Present results as options matching the profile, never as buy instructions, and end with the standard disclaimer.",
+      parameters: {
+        type: "object",
+        properties: {
+          amount_usd: { type: "number", description: "Amount in USD the user mentioned." },
+          risk_level: {
+            type: "string",
+            enum: ["low", "medium", "high"],
+            description: "The user's OWN stated risk profile. Never guess it — ask the user first.",
+          },
+        },
+        required: ["amount_usd", "risk_level"],
+      },
+    },
+  },
 ];
 
 const json = (v: unknown) =>
   JSON.stringify(v, (_k, val) => (typeof val === "bigint" ? val.toString() : val));
 
 /** Dispatch a tool call; returns the JSON result for the model and a log line. */
-async function dispatch(
+export async function dispatch(
   name: string,
-  args: { text?: string; confirmed?: boolean },
+  args: {
+    text?: string;
+    confirmed?: boolean;
+    limit?: number;
+    symbol?: string;
+    amount_usd?: number;
+    risk_level?: string;
+  },
   ctx: AgentContext,
 ): Promise<{ result: string; log: string }> {
-  const execTag = (res: { executed: boolean; decision: { verdict: string } }) =>
-    res.executed ? green("executed") : red(`refused (${res.decision.verdict})`);
+  const execTag = (res: { executed: boolean; decision: { action: string; verdict: string } }) =>
+    res.executed
+      ? green("executed")
+      : res.decision.action === "confirm"
+        ? yellow(`awaiting confirmation (${res.decision.verdict})`)
+        : red(`refused (${res.decision.verdict})`);
   try {
     switch (name) {
       case "propose_payment": {
@@ -190,8 +260,20 @@ async function dispatch(
       }
       case "guard_check": {
         const intent = parseIntent(args.text ?? "");
-        if (isProposeError(intent))
+        if (isProposeError(intent)) {
+          // Defensive routing: when the model sends a swap phrase here, run
+          // the REAL firewall over the swap (without executing) instead of
+          // failing with a payment-shaped "missing recipient" error.
+          const swap = parseSwapIntent(args.text ?? "");
+          if (!("error" in swap)) {
+            const res = await checkSwap(swap, ctx);
+            return {
+              result: json({ ...res, note: "checked as a swap; execute via swap_tokens" }),
+              log: `${gray("→")} guard_check(swap)… verdict: ${colorVerdict(res.report.verdict)}`,
+            };
+          }
           return { result: json(intent), log: `${gray("→")} guard_check… ${red("parse error")}` };
+        }
         const report = await guardCheck(intent, ctx);
         const decision = decideAction(report);
         return {
@@ -244,6 +326,25 @@ async function dispatch(
           };
         const res = await removeLiquidity(intent, ctx, args.confirmed === true);
         return { result: json(res), log: `${gray("→")} remove_liquidity… ${execTag(res)}` };
+      }
+      case "market_overview": {
+        const res = await marketOverview(ctx, args.limit ?? 10);
+        return {
+          result: json(res),
+          log: `${gray("→")} market_overview… ${res.coins.length} coins (${res.source})`,
+        };
+      }
+      case "token_info": {
+        const res = await tokenInfo(args.symbol ?? "", ctx);
+        return { result: json(res), log: `${gray("→")} token_info… ${res.coin.symbol}` };
+      }
+      case "suggest_allocation": {
+        const res = await suggestAllocation(args.amount_usd ?? Number.NaN, args.risk_level, ctx);
+        const tag =
+          "error" in res
+            ? yellow(res.error === "missing_risk_level" ? "needs risk profile" : res.error)
+            : `${res.options.length} options (${res.riskLevel})`;
+        return { result: json(res), log: `${gray("→")} suggest_allocation… ${tag}` };
       }
       default:
         return {

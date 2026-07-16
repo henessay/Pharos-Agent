@@ -1,4 +1,5 @@
 import {
+  type CoinData,
   DEX_NATIVE_SENTINEL,
   type Deployments,
   type DexProvider,
@@ -7,6 +8,8 @@ import {
   dodoRouteProxyAbi,
   type ExplorerClient,
   FaroswapProvider,
+  type MarketDataProvider,
+  MarketDataUnavailableError,
   NATIVE_TOKEN,
   type PolicyStatus,
   type QuoteParams,
@@ -197,6 +200,50 @@ export function makeFixtureDexProvider(): DexProvider {
     buildAddLiquidityTx: (params) => inner.buildAddLiquidityTx(params),
     buildRemoveLiquidityTx: (params) =>
       inner.buildRemoveLiquidityTx({ ...params, liquidity: params.liquidity ?? 10n ** 15n }),
+  };
+}
+
+/** Canned market universe for GUARD_DRY_RUN — ranks span majors → small caps. */
+const FIXTURE_COINS: CoinData[] = [
+  ["BTC", "Bitcoin", 1, 118250, 1.2, 4.8, 11.3, 2_350e9],
+  ["ETH", "Ethereum", 2, 6420, -0.6, 2.1, 9.9, 772e9],
+  ["USDT", "Tether", 3, 1.0, 0.0, 0.0, 0.1, 168e9],
+  ["XRP", "XRP", 4, 3.4, 0.8, -1.2, 5.5, 195e9],
+  ["BNB", "BNB", 5, 890, 0.4, 1.9, 7.2, 128e9],
+  ["SOL", "Solana", 6, 301, 3.4, -1.7, 22.5, 145e9],
+  ["USDC", "USDC", 7, 1.0, 0.0, 0.0, 0.0, 64e9],
+  ["WBTC", "Wrapped Bitcoin", 12, 118100, 1.2, 4.7, 11.2, 14e9],
+  ["LINK", "Chainlink", 15, 28.4, 2.2, 6.3, 15.8, 18e9],
+  ["SUI", "Sui", 22, 4.9, 4.1, 9.4, 31.0, 14e9],
+  ["APT", "Aptos", 30, 11.2, -2.3, 3.8, 18.4, 6.5e9],
+  ["SEI", "Sei", 55, 0.62, 5.9, 14.2, 42.7, 2.1e9],
+  ["TIA", "Celestia", 80, 5.1, -1.1, -4.6, 12.9, 1.2e9],
+].map(([symbol, name, rank, priceUsd, c24, c7, c30, marketCapUsd]) => ({
+  symbol: symbol as string,
+  name: name as string,
+  rank: rank as number,
+  priceUsd: priceUsd as number,
+  change24hPct: c24 as number,
+  change7dPct: c7 as number,
+  change30dPct: c30 as number,
+  marketCapUsd: marketCapUsd as number,
+}));
+
+/** Offline MarketDataProvider for GUARD_DRY_RUN — no HTTP, deterministic data. */
+export function makeFixtureMarketProvider(): MarketDataProvider {
+  return {
+    name: "fixture",
+    getTopCoins: async (limit = 10) =>
+      FIXTURE_COINS.filter((c) => (c.rank ?? Number.MAX_SAFE_INTEGER) <= limit),
+    getCoin: async (symbol) => {
+      const hit = FIXTURE_COINS.find((c) => c.symbol === symbol.toUpperCase());
+      if (!hit) throw new MarketDataUnavailableError(`no market data for symbol ${symbol}`);
+      return hit;
+    },
+    getQuotes: async (symbols) => {
+      const wanted = new Set(symbols.map((s) => s.toUpperCase()));
+      return FIXTURE_COINS.filter((c) => wanted.has(c.symbol));
+    },
   };
 }
 

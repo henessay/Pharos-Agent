@@ -1,4 +1,5 @@
 import { type Address, maxUint256, parseEther } from "viem";
+import { parseSwapIntent } from "./dex.js";
 
 /** A parsed payment intent (native transfer through the treasury). */
 export interface PaymentIntent {
@@ -38,6 +39,19 @@ const AMOUNT_RE = /([0-9]+(?:\.[0-9]+)?)\s*(?:phrs|native|tokens?)?/i;
  * throwing, so the caller can ask the user to clarify.
  */
 export function parseIntent(text: string): ProposedIntent | ProposeError {
+  // A swap phrase ("swap 0.01 PHRS to USDC") has no recipient by design — the
+  // output goes to the agent's own wallet. Without this check it would fall
+  // through to the payment branch and produce a misleading missing_recipient
+  // error asking for an address.
+  if (!("error" in parseSwapIntent(text))) {
+    return {
+      error: "swap_intent",
+      message:
+        "This is a token swap, not a payment — route it through the swap_tokens tool " +
+        "(or get_quote for a preview). Swaps need no recipient address.",
+    };
+  }
+
   // Lowercase so downstream encodeFunctionData never trips checksum validation.
   const addresses = (text.match(ADDRESS_RE) ?? []).map((a) => a.toLowerCase() as Address);
   // Strip addresses before amount parsing so their hex digits aren't read as a number.

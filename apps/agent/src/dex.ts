@@ -335,9 +335,51 @@ async function executePlan(
 }
 
 /**
- * Tool: swap tokens on FaroSwap — quote, build, guard, and (verdict
- * permitting) send. `confirmed` must only be set after the user explicitly
- * answered "y" to a warn verdict.
+ * Guard-check a swap WITHOUT executing anything: quote, build the router tx,
+ * and run the full firewall over it. Used when the model routes a swap phrase
+ * through guard_check — the report is real, only the sending is withheld.
+ */
+export async function checkSwap(
+  intent: SwapIntent,
+  ctx: AgentContext,
+): Promise<{ quote: QuoteSummary; report: GuardReport; decision: Decision; fix?: string }> {
+  const dex = provider(ctx);
+  const quote = await dex.getQuote(quoteParams(intent, ctx));
+  const independentQuote = ctx.dryRun ? quote : await dex.getQuote(quoteParams(intent, ctx));
+  const plan = await dex.buildSwapTx(quote);
+  const report = await guardDexTx(
+    plan.tx,
+    { agentAddress: ctx.agent, quote, independentQuote },
+    ctx,
+  );
+  const result: { quote: QuoteSummary; report: GuardReport; decision: Decision; fix?: string } = {
+    quote: summarizeQuote(quote, intent),
+    report,
+    // Swaps always need the user's explicit yes — even a clean allow verdict
+    // comes back as "confirm" so the model asks before calling swap_tokens.
+    decision: awaitConfirmation(decideAction(report)),
+  };
+  const fix = fixHint(report);
+  if (fix) result.fix = fix;
+  return result;
+}
+
+/** An `allow`-verdict decision downgraded to "ask the user first". */
+function awaitConfirmation(decision: Decision): Decision {
+  if (decision.action !== "execute") return decision;
+  return {
+    ...decision,
+    action: "confirm",
+    headline: "Allowed by tx-guard — but swaps move funds, so confirm with y/n before I send it.",
+  };
+}
+
+/**
+ * Tool: swap tokens on FaroSwap — quote, build, guard, and send only after
+ * the user's explicit confirmation. Swaps move funds, so the FIRST call never
+ * executes regardless of verdict: it returns the GuardReport + quote and a
+ * `confirm` decision (or `reject` on block). Only a repeat call with
+ * `confirmed=true` — after the user's explicit "yes" — actually sends.
  */
 export async function swapTokens(
   intent: SwapIntent,
@@ -350,17 +392,42 @@ export async function swapTokens(
   // dry-run the fixture quote is deterministic so refetching is pointless.
   const independentQuote = ctx.dryRun ? quote : await dex.getQuote(quoteParams(intent, ctx));
   const plan = await dex.buildSwapTx(quote);
+  const summary = summarizeQuote(quote, intent);
 
-  const result = await executePlan(
-    plan,
-    (_tx, isApproval) =>
-      isApproval
-        ? { agentAddress: ctx.agent, quote, maxApproveAmount: quote.fromAmount }
-        : { agentAddress: ctx.agent, quote, independentQuote },
-    ctx,
-    confirmed,
-  );
-  return { ...result, quote: summarizeQuote(quote, intent) };
+  const dexCtxFor = (_tx: DexTxRequest, isApproval: boolean): DexGuardContext =>
+    isApproval
+      ? { agentAddress: ctx.agent, quote, maxApproveAmount: quote.fromAmount }
+      : { agentAddress: ctx.agent, quote, independentQuote };
+
+  if (!confirmed) {
+    // Preview pass: guard every tx in the plan, send nothing. Note that an
+    // ERC-20 input may report SIM_REVERT here (its allowance is not on-chain
+    // yet); the confirmed pass interleaves approvals so that resolves itself.
+    if (!ctx.dryRun) requireDeployments();
+    const reports: GuardReport[] = [];
+    for (const approval of plan.approvals) {
+      reports.push(await guardDexTx(approval, dexCtxFor(approval, true), ctx));
+    }
+    const mainReport = await guardDexTx(plan.tx, dexCtxFor(plan.tx, false), ctx);
+    reports.push(mainReport);
+
+    const worst =
+      reports.find((r) => r.verdict === "block") ??
+      reports.find((r) => r.verdict === "warn") ??
+      mainReport;
+    const result: DexExecuteResult = {
+      executed: false,
+      decision: awaitConfirmation(decideAction(worst)),
+      report: worst,
+      quote: summary,
+    };
+    const fix = fixHint(worst);
+    if (fix) result.fix = fix;
+    return result;
+  }
+
+  const result = await executePlan(plan, dexCtxFor, ctx, true);
+  return { ...result, quote: summary };
 }
 
 /** Tool: add full-range liquidity to a FaroSwap V3 pool (guarded). */

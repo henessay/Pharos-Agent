@@ -93,8 +93,22 @@ describe("DeFi tools (GUARD_DRY_RUN fixtures)", () => {
     expect(quote.route.length).toBeGreaterThan(0);
   });
 
-  it("executes an allowed native swap and returns the explorer link", async () => {
+  it("an allow swap WITHOUT confirmed returns the GuardReport and does NOT send", async () => {
     const res = await swapTokens(swapIntent("swap 0.01 PHRS to USDC"), ctx);
+    expect(res.executed).toBe(false);
+    expect(res.txHash).toBeUndefined();
+    expect(res.decision.verdict).toBe("allow"); // the guard did run and allowed it
+    expect(res.decision.action).toBe("confirm"); // …but execution awaits the user's yes
+    expect(res.decision.headline).toContain("confirm");
+    // the report the user confirms against is complete
+    expect(res.report.verdict).toBe("allow");
+    expect(res.quote?.minReturn).toContain("USDC");
+    expect(res.quote?.priceImpact).toBe(0);
+    expect(res.quote?.route.length).toBeGreaterThan(0);
+  });
+
+  it("the same allow swap WITH confirmed=true executes and returns the explorer link", async () => {
+    const res = await swapTokens(swapIntent("swap 0.01 PHRS to USDC"), ctx, true);
     expect(res.decision.verdict).toBe("allow");
     expect(res.executed).toBe(true);
     expect(res.txHash).toBeDefined();
@@ -102,8 +116,8 @@ describe("DeFi tools (GUARD_DRY_RUN fixtures)", () => {
     expect(res.approvalTxHashes).toBeUndefined(); // native input needs no approvals
   });
 
-  it("sends an exact-amount approval before an ERC-20 swap", async () => {
-    const res = await swapTokens(swapIntent("swap 1 USDC to USDT"), ctx);
+  it("sends an exact-amount approval before a confirmed ERC-20 swap", async () => {
+    const res = await swapTokens(swapIntent("swap 1 USDC to USDT"), ctx, true);
     expect(res.executed).toBe(true);
     expect(res.approvalTxHashes).toHaveLength(1);
     const approve = res.report.risks.find((r) => r.rule === "EXACT_APPROVE");

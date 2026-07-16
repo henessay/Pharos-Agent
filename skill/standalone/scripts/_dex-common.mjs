@@ -1,15 +1,17 @@
 // Shared helpers for the standalone DeFi wrappers (dex-*.mjs). Not a CLI
 // entrypoint itself. Everything runs off the bundled core in
 // ../lib/guard-skill.mjs — Node 20+ only, no install or build step required.
+//
+// ADVISOR BUILD: this marketplace package has NO transaction-execution path.
+// The dex scripts quote, build and firewall-check plans, and always redirect
+// actual execution to the open-source package — they never sign or send.
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DEX_NATIVE_SENTINEL,
   FaroswapProvider,
   getPublicClient,
-  getWalletClient,
   guardTransaction,
-  pharosTestnet,
   requireDeployments,
   USDC,
   USDT,
@@ -24,6 +26,12 @@ process.env.DEPLOYMENTS_FILE ??= join(
   "assets",
   "deployments.json",
 );
+
+/** Verbatim redirect answer for any execution request on this platform. */
+export const ADVISOR_REDIRECT =
+  "I can't execute swaps on this platform — I don't have access to your wallet. " +
+  "Here's the safety-checked plan. To execute it yourself, use the open-source package: " +
+  "https://github.com/henessay/Pharos-Agent";
 
 /** Tokens tradable on FaroSwap. PHRS is the native coin (aggregator sentinel). */
 export const TOKENS = {
@@ -67,21 +75,15 @@ export function formatUnits(value, decimals) {
   return frac ? `${whole}.${frac}` : whole;
 }
 
-/** Resolve clients + the agent address. Wallet is required only to execute/log. */
-export function setup({ needWallet = false } = {}) {
+/** Resolve clients + the address plans are built for. No signer is ever created. */
+export function setup() {
   const deployments = requireDeployments();
   const publicClient = getPublicClient({ deployments });
-  const walletClient = getWalletClient({ deployments });
-  if (needWallet && !walletClient) {
-    console.error("this action needs PRIVATE_KEY in the environment");
-    process.exit(2);
-  }
   const agent =
-    walletClient?.account?.address ??
     process.env.AGENT_ADDRESS ??
-    // read-only fallback so quotes work without any signer configured
+    // read-only fallback so quotes work without any configuration
     "0x1111111111111111111111111111111111111111";
-  return { deployments, publicClient, walletClient, agent, provider: new FaroswapProvider() };
+  return { deployments, publicClient, agent, provider: new FaroswapProvider() };
 }
 
 /** Human-readable projection of a DexQuote. */
@@ -99,88 +101,39 @@ export function summarizeQuote(quote, from, to, slippagePct) {
   };
 }
 
-async function sendAndWait(tx, { publicClient, walletClient, deployments }) {
-  const hash = await walletClient.sendTransaction({
-    to: tx.to,
-    data: tx.data,
-    value: tx.value,
-    ...(tx.gasLimit !== undefined ? { gas: tx.gasLimit } : {}),
-    account: walletClient.account,
-    chain: pharosTestnet,
-  });
-  await publicClient.waitForTransactionReceipt({ hash });
-  return { to: tx.to, hash, explorerUrl: `${deployments.explorer}/tx/${hash}` };
-}
-
 /**
- * Guard (and with --execute: send) a DexTxPlan transaction by transaction.
- * Each approval is checked, sent and mined before the next transaction is
- * checked, so the operation's simulation runs against the allowance state the
- * approvals just created. The DEX rules run because a `dex` context is
- * supplied on every check.
+ * ADVISOR MODE: run the firewall over every tx in a DexTxPlan (approvals
+ * first, then the operation) and report — NOTHING is ever signed or sent.
+ * The result always carries the redirect to the open-source executor.
  *
- * Execution policy (enforced here, not just documented): `allow` sends with
- * --execute; `warn` additionally needs --yes (the human confirmation);
- * `block` never sends and stops everything after it.
- *
- * Without --execute this is a pure dry check: every tx is evaluated against
- * the CURRENT chain state, so an ERC-20 operation may honestly report
- * SIM_REVERT (its allowance does not exist yet). `note` says so.
+ * Note: an ERC-20 operation may honestly report SIM_REVERT (its allowance
+ * does not exist yet); the open-source executor interleaves approvals, so
+ * that resolves itself at execution time.
  */
-export async function runGuardedPlan(plan, dexCtxFor, ctx, mainOpts = {}) {
+export async function guardPlanAdvisor(plan, dexCtxFor, ctx) {
   const { publicClient, deployments, agent } = ctx;
-  const wantExecute = has("execute");
-  const confirmed = has("yes");
-  const may = (verdict) => verdict === "allow" || (verdict === "warn" && confirmed);
-  const worstOf = (checks) =>
+
+  const checks = [];
+  for (const tx of [...plan.approvals, plan.tx]) {
+    const isApproval = checks.length < plan.approvals.length;
+    const report = await guardTransaction(
+      { from: agent, to: tx.to, value: tx.value, data: tx.data },
+      { publicClient, deployments, dex: dexCtxFor(tx, isApproval) },
+    );
+    checks.push({ kind: isApproval ? "approval" : "operation", to: tx.to, report });
+  }
+
+  const verdict =
     checks.find((c) => c.report.verdict === "block")?.report.verdict ??
     checks.find((c) => c.report.verdict === "warn")?.report.verdict ??
     "allow";
 
-  const checks = [];
-  const txs = [];
-  const check = async (tx, isApproval, opts = {}) => {
-    const report = await guardTransaction(
-      { from: agent, to: tx.to, value: tx.value, data: tx.data },
-      { publicClient, deployments, dex: dexCtxFor(tx, isApproval), ...opts },
-    );
-    checks.push({ kind: isApproval ? "approval" : "operation", to: tx.to, report });
-    return report;
-  };
-  const refusal = (verdict) => ({
-    checks,
-    verdict: worstOf(checks),
-    executed: false,
-    txs,
-    reason:
-      verdict === "warn"
-        ? "warn verdict needs explicit --yes confirmation"
-        : "blocked by the firewall",
-  });
-
-  for (const approval of plan.approvals) {
-    const report = await check(approval, true);
-    if (!wantExecute) continue;
-    if (!may(report.verdict)) return refusal(report.verdict);
-    txs.push(await sendAndWait(approval, ctx));
+  const result = { verdict, checks, executed: false, redirect: ADVISOR_REDIRECT };
+  if (plan.approvals.length > 0) {
+    result.note =
+      "approvals are never sent by this advisor package, so the operation may report " +
+      "SIM_REVERT (allowance missing); the open-source executor resolves this by mining " +
+      "each approval before the next check";
   }
-
-  const mainReport = await check(plan.tx, false, mainOpts);
-  if (!wantExecute) {
-    const result = {
-      checks,
-      verdict: worstOf(checks),
-      executed: false,
-      reason: "dry check (pass --execute to send)",
-    };
-    if (plan.approvals.length > 0) {
-      result.note =
-        "approvals are not sent in a dry check, so the operation may report SIM_REVERT " +
-        "(allowance missing); with --execute each approval is mined before the next check";
-    }
-    return result;
-  }
-  if (!may(mainReport.verdict)) return refusal(mainReport.verdict);
-  txs.push(await sendAndWait(plan.tx, ctx));
-  return { checks, verdict: worstOf(checks), executed: true, txs };
+  return result;
 }

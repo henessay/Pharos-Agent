@@ -188,6 +188,42 @@ describe("guardTransaction", () => {
     expect(report.verdict).toBe("warn");
   });
 
+  it("UNVERIFIED_CONTRACT stays silent on an EOA recipient and never asks the explorer", async () => {
+    const getSourceCode = vi.fn(async () => ({ available: true, verified: false }));
+    const explorer: ExplorerClient = {
+      getSourceCode,
+      getTxList: async () => ({ available: false, error: "n/a" }),
+    };
+    // Live RPCs return undefined (not "0x") for accounts without code.
+    for (const code of [undefined, "0x" as Hex]) {
+      const report = await guardTransaction(
+        { from: AGENT, to: RECIPIENT, value: parseEther("0.05") },
+        { publicClient: fakePublicClient({ ...(code ? { code } : {}) }), explorer, deployments },
+      );
+      const r = risk(report.risks, "UNVERIFIED_CONTRACT");
+      expect(r.status).toBe("ok");
+      expect(r.severity).toBe("info");
+      expect(r.message).toContain("externally-owned account");
+    }
+    expect(getSourceCode).not.toHaveBeenCalled();
+  });
+
+  it("UNVERIFIED_CONTRACT names the tx target address when it triggers", async () => {
+    const explorer: ExplorerClient = {
+      getSourceCode: async () => ({ available: true, verified: false }),
+      getTxList: async () => ({ available: false, error: "n/a" }),
+    };
+    const report = await guardTransaction(
+      { from: AGENT, to: TOKEN, value: 1n },
+      { publicClient: fakePublicClient({ code: "0x60006000" }), explorer, deployments },
+    );
+    const r = risk(report.risks, "UNVERIFIED_CONTRACT");
+    expect(r.status).toBe("triggered");
+    expect(r.message).toContain(TOKEN);
+    expect(r.message).toContain("not the payment recipient");
+    expect(r.detail?.address).toBe(TOKEN);
+  });
+
   it("downgrades explorer-dependent rules to skipped when the API is down", async () => {
     const report = await guardTransaction(
       { from: AGENT, to: TOKEN, value: 1n },

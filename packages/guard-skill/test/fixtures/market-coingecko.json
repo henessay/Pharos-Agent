@@ -1,0 +1,50 @@
+[
+  {
+    "id": "bitcoin",
+    "symbol": "btc",
+    "name": "Bitcoin",
+    "current_price": 118307.11,
+    "market_cap": 2351000000000,
+    "market_cap_rank": 1,
+    "price_change_percentage_24h": 1.19,
+    "price_change_percentage_24h_in_currency": 1.21,
+    "price_change_percentage_7d_in_currency": 4.75,
+    "price_change_percentage_30d_in_currency": 11.28
+  },
+  {
+    "id": "ethereum",
+    "symbol": "eth",
+    "name": "Ethereum",
+    "current_price": 6418.9,
+    "market_cap": 771500000000,
+    "market_cap_rank": 2,
+    "price_change_percentage_24h": -0.58,
+    "price_change_percentage_24h_in_currency": -0.61,
+    "price_change_percentage_7d_in_currency": 2.08,
+    "price_change_percentage_30d_in_currency": 9.87
+  },
+  {
+    "id": "tether",
+    "symbol": "usdt",
+    "name": "Tether",
+    "current_price": 1.0001,
+    "market_cap": 167900000000,
+    "market_cap_rank": 3,
+    "price_change_percentage_24h": 0.01,
+    "price_change_percentage_24h_in_currency": 0.01,
+    "price_change_percentage_7d_in_currency": -0.01,
+    "price_change_percentage_30d_in_currency": 0.0
+  },
+  {
+    "id": "bitcoin-clone-scam",
+    "symbol": "btc",
+    "name": "Bitcoin Clone",
+    "current_price": 0.002,
+    "market_cap": 1200000,
+    "market_cap_rank": 241,
+    "price_change_percentage_24h": 55.0,
+    "price_change_percentage_24h_in_currency": 55.0,
+    "price_change_percentage_7d_in_currency": -12.0,
+    "price_change_percentage_30d_in_currency": null
+  }
+]

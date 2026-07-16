@@ -21,7 +21,7 @@ the Pharos testnet (chain id `688689`).
 ```bash
 pnpm install
 pnpm build
-pnpm test     # 153 tests: contracts (forge) + guard-skill + agent (vitest)
+pnpm test     # 189 tests: contracts (forge) + guard-skill + agent (vitest)
 ```
 
 Then try the firewall offline (no RPC, no keys) via the demo agent's fixtures:
@@ -77,11 +77,35 @@ with no code path around it:
   verified position manager; LP_RECOGNITION blocks any calldata whose recipient
   is not the agent itself.
 
-Verdict gate (enforced in code, not prompts): `allow` → execute and show the
-explorer link; `warn` → surface the risks and require an explicit y/n; `block` →
-never executes, with the reason and a fix hint. The standalone skill ships the
-same flows as zero-dependency scripts (`dex-quote`, `dex-swap`,
-`dex-add-liquidity`, `dex-remove-liquidity`).
+Verdict gate (enforced in code, not prompts): swaps NEVER send on the first
+call — the tool returns the GuardReport (verdict, quote, min return, price
+impact) and waits for the user's explicit y/n, even on `allow`; `warn` also
+requires that confirmation; `block` never executes, with the reason and a fix
+hint.
+
+## Guarded DeFi Advisor
+
+The agent doubles as a market advisor — data, never directives:
+
+- **`market_overview` / `token_info`** — top coins and per-token USD data
+  (price, 24h/7d/30d change, market cap, rank) from CoinMarketCap
+  (`CMC_API_KEY`) with a keyless CoinGecko fallback, cached 60s.
+- **`suggest_allocation(amount_usd, risk_level)`** — 3-4 candidate coins WITH
+  data for a stated risk profile (low → stablecoins + BTC/ETH; medium →
+  top-20; high → smaller caps / newer ecosystems). The risk level is
+  mandatory: the agent asks for it and never assumes. Results are framed as
+  "options that match your profile" — direct buy/sell recommendations are
+  prohibited by both the prompt and the tool contract, and every analytics
+  answer ends with: *"This is market data, not financial advice. Always do
+  your own research."*
+
+Two builds, one firewall:
+
+| | Local CLI (`apps/agent`) | Marketplace standalone (`tx-guard-standalone.zip`) |
+|---|---|---|
+| Wallet | Your `PRIVATE_KEY` | **None — cannot sign anything** |
+| Swaps / LP | Guarded execute after explicit y/n | Guarded quote/plan + redirect to this repo |
+| Market analytics | Same tools | Same scripts (`market-overview`, `token-info`, `suggest-allocation`) |
 
 **Proven live on Atlantic (2026-07-16)** — full guard pipeline → verdict
 logged to GuardLog → 0.01 PHRS swapped to 0.016532 USDC through the verified

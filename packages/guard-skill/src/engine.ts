@@ -192,12 +192,14 @@ async function ruleUnverifiedContract(
     };
   }
 
+  // EOAs (no code) have nothing to verify — the rule never fires for them.
   if (!code || code === "0x") {
     return {
       rule: "UNVERIFIED_CONTRACT",
       severity: "info",
       status: "ok",
-      message: "Recipient is an externally-owned account (no code)",
+      message: `Tx target ${intent.to} is an externally-owned account (no code) — nothing to verify`,
+      detail: { address: intent.to },
     };
   }
 
@@ -211,18 +213,23 @@ async function ruleUnverifiedContract(
     };
   }
   if (!src.verified) {
+    // Name the address explicitly: for treasury payments the tx target is the
+    // TreasuryPolicy contract, and an anonymous message reads as if it were
+    // about the payment recipient.
     return {
       rule: "UNVERIFIED_CONTRACT",
       severity: "warn",
       status: "triggered",
-      message: "Target contract source is not verified on the explorer",
+      message: `Tx target contract ${intent.to} has no verified source on the explorer (note: this is the contract being called, not the payment recipient)`,
+      detail: { address: intent.to },
     };
   }
   return {
     rule: "UNVERIFIED_CONTRACT",
     severity: "info",
     status: "ok",
-    message: `Verified contract${src.contractName ? ` (${src.contractName})` : ""}`,
+    message: `Verified contract ${intent.to}${src.contractName ? ` (${src.contractName})` : ""}`,
+    detail: { address: intent.to },
   };
 }
 

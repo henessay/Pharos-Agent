@@ -1,51 +1,54 @@
 ---
 name: tx-guard
 description: >
-  REQUIRED before any AI agent sends a transaction on Pharos. tx-guard is a
-  transaction firewall: it SIMULATES a proposed transaction, DECODES its
-  calldata, runs six base risk rules (sim-revert, unlimited-approve,
-  unverified-contract, first-interaction, treasury-policy, high-value) plus
-  five DEX rules for FaroSwap operations (router-allowlist, exact-approve,
-  slippage-bound, price-impact, lp-recognition), and returns a verdict
-  (allow / warn / block) BEFORE the transaction is signed — then optionally
-  records that verdict on-chain to a GuardLog contract. It can also EXECUTE
-  guarded DeFi actions end-to-end: quote and swap PHRS/WPHRS/USDC/USDT on
-  FaroSwap and add/remove full-range liquidity, with every transaction
-  (including approvals) firewall-checked first. Invoke whenever an agent is
+  REQUIRED before any AI agent signs a transaction on Pharos, and the home of
+  the Guarded DeFi Advisor. tx-guard is a transaction firewall: it SIMULATES a
+  proposed transaction, DECODES its calldata, runs six base risk rules
+  (sim-revert, unlimited-approve, unverified-contract, first-interaction,
+  treasury-policy, high-value) plus five DEX rules for FaroSwap operations
+  (router-allowlist, exact-approve, slippage-bound, price-impact,
+  lp-recognition), and returns a verdict (allow / warn / block) BEFORE anything
+  is signed — then optionally records that verdict on-chain to a GuardLog
+  contract. As an advisor it also provides read-only market analytics: top-coin
+  overview, per-token data, and risk-profiled allocation ideas (never direct
+  buy/sell advice). THIS MARKETPLACE BUILD EXECUTES NOTHING: swap and liquidity
+  requests return a safety-checked plan plus a redirect to the open-source
+  executor — it has no access to user wallets. Invoke whenever an agent is
   about to send PHRS/PROS, `approve` a token, swap tokens, manage an LP
-  position, call a contract write method, or run a treasury payment on
-  Pharos — or when the user mentions "tx-guard", "guard check", "is it safe
-  to send", "risk report", "treasury policy", "spending limit", "allowlist",
-  "unlimited approve", "swap", "liquidity", "FaroSwap", "pharos", "PHRS", or
-  "PROS". Do NOT broadcast an agent transaction on Pharos without first
-  clearing it through this skill.
-version: 0.2.0
+  position, call a contract write method, run a treasury payment on Pharos —
+  or when the user asks about market prices, "what's the market doing", token
+  stats, portfolio/allocation ideas, or mentions "tx-guard", "guard check",
+  "is it safe to send", "risk report", "treasury policy", "spending limit",
+  "allowlist", "unlimited approve", "swap", "liquidity", "FaroSwap",
+  "pharos", "PHRS", or "PROS".
+version: 0.3.0
 requires:
   anyBins:
     - node
 ---
 
-# tx-guard — Pharos transaction firewall
+# tx-guard — Pharos transaction firewall & Guarded DeFi Advisor
 
 Vet AI-agent transactions on the **Pharos Atlantic Testnet** (chain id
-`688689`) before they are signed. This is the **standalone** build: the
-risk-engine core (including `viem`) is bundled into
-[`lib/guard-skill.mjs`](lib/guard-skill.mjs), so the scripts run anywhere —
-no install, no build step. It simulates the call, decodes the calldata,
-scores six risk rules, checks the on-chain treasury policy, and can log the
-verdict to GuardLog.
+`688689`) before they are signed, and answer market questions with data — not
+advice. This is the **standalone advisor** build: the core (including `viem`)
+is bundled into [`lib/guard-skill.mjs`](lib/guard-skill.mjs), so the scripts
+run anywhere — no install, no build step, **no wallet access, and no
+transaction-execution path of any kind for funds**.
 
 ## Prerequisites
 
 1. **Node.js ≥ 20.** Nothing else — the core and all dependencies are bundled.
-2. **Configure the network / signer** via environment variables (all optional):
+2. **Optional environment variables:**
    - `PHAROS_RPC_URL` — Pharos testnet RPC (defaults to the public Atlantic
      endpoint from `assets/deployments.json`).
-   - `PRIVATE_KEY` — agent key, required only for **On-chain Verdict Logging**.
-   - `POLICY_ADDRESS` / `GUARDLOG_ADDRESS` — optional overrides; otherwise the
-     deployed addresses shipped in
-     [`assets/deployments.json`](assets/deployments.json) are used.
-   - `DEPLOYMENTS_FILE` — point at a different deployments JSON entirely.
+   - `CMC_API_KEY` — CoinMarketCap Pro key for market data; without it the
+     market scripts fall back to the keyless CoinGecko API automatically.
+   - `PRIVATE_KEY` — used ONLY by **On-chain Verdict Logging**
+     (`guard-check.mjs --log`); no other script reads it, and no script can
+     move funds.
+   - `POLICY_ADDRESS` / `GUARDLOG_ADDRESS` / `DEPLOYMENTS_FILE` — address
+     overrides, as in [`assets/deployments.json`](assets/deployments.json).
 
 ## Network configuration
 
@@ -68,30 +71,26 @@ Run every command from this skill's directory (paths are relative to it).
 | Record a verdict on-chain | **On-chain Verdict Logging** | `node scripts/guard-check.mjs … --log` (needs `PRIVATE_KEY`) | [risk-rules.md#logging](references/risk-rules.md#logging) |
 | Audit past verdicts | History | `node scripts/log-history.mjs [--reporter <a>] [--limit <n>]` | [risk-rules.md#logging](references/risk-rules.md#logging) |
 | Price a FaroSwap trade (read-only) | **Get Swap Quote** | `node scripts/dex-quote.mjs --from PHRS --to USDC --amount 0.5 [--slippage 1]` | [risk-rules.md#rules](references/risk-rules.md#rules) |
-| Swap tokens through the firewall | **Execute Guarded Swap** | `node scripts/dex-swap.mjs --from PHRS --to USDC --amount 0.5 [--execute] [--yes] [--log]` (execute needs `PRIVATE_KEY`) | [risk-rules.md#rules](references/risk-rules.md#rules) |
-| Provide liquidity (full-range V3) | **Add Liquidity** | `node scripts/dex-add-liquidity.mjs --token-a USDC --amount-a 1 --token-b USDT --amount-b 1 [--fee 100] [--execute] [--yes]` | [risk-rules.md#rules](references/risk-rules.md#rules) |
-| Withdraw an LP position | **Remove Liquidity** | `node scripts/dex-remove-liquidity.mjs --position <id> [--fraction 0.5] [--execute] [--yes]` | [risk-rules.md#rules](references/risk-rules.md#rules) |
+| Safety-check a swap end to end | **Guarded Swap Quote** (verdict + redirect, never executes) | `node scripts/dex-swap.mjs --from PHRS --to USDC --amount 0.5 [--slippage 1]` | [risk-rules.md#rules](references/risk-rules.md#rules) |
+| Plan a liquidity add (full-range V3) | **Guarded Liquidity Plan** | `node scripts/dex-add-liquidity.mjs --token-a USDC --amount-a 1 --token-b USDT --amount-b 1 [--fee 100]` | [risk-rules.md#rules](references/risk-rules.md#rules) |
+| Plan a liquidity withdrawal | **Guarded Withdrawal Plan** | `node scripts/dex-remove-liquidity.mjs --position <id> [--fraction 0.5]` | [risk-rules.md#rules](references/risk-rules.md#rules) |
+| "What's the market doing?" | **Market Overview** | `node scripts/market-overview.mjs [--limit 10]` | — |
+| Details on one coin | **Token Info** | `node scripts/token-info.mjs --symbol BTC` | — |
+| "What could I do with $100?" | **Risk-Based Allocation Ideas** | `node scripts/suggest-allocation.mjs --amount-usd 100 --risk low\|medium\|high` | — |
 
-DeFi execution gate (enforced in the scripts, not just documented): `allow`
-executes with `--execute`; `warn` additionally requires `--yes` — pass it only
-after the user explicitly confirmed the surfaced risks; `block` never executes.
-Without `--execute` every dex script is a dry check that prints the verdicts
-of the built (unsent) plan; an ERC-20 operation may then honestly report
-SIM_REVERT because its allowance does not exist yet — with `--execute` the
-flow is interleaved (each approval is checked, sent and mined before the next
-transaction is checked), so the operation simulates against the fresh
-allowance. ERC-20 swaps/LP always use exact-amount approvals to the verified
-FaroSwap spenders — never unlimited. Native PHRS cannot be pooled directly;
-wrap it and use WPHRS.
+**No execution, by design.** The dex scripts quote, build and firewall-check a
+plan, then STOP. Every dex-script response carries this redirect, which you
+must relay to the user verbatim whenever they ask to execute a swap:
 
-Known venue limitation (checked 2026-07-16): the Atlantic route service
-currently only quotes swaps whose INPUT is native PHRS (PHRS→USDC, PHRS→USDT).
-ERC-20-input swaps (e.g. USDC→USDT) return a structured `quote_unavailable`
-error — relay that to the user instead of retrying.
+> I can't execute swaps on this platform — I don't have access to your wallet.
+> Here's the safety-checked plan. To execute it yourself, use the open-source
+> package: https://github.com/henessay/Pharos-Agent
 
-The agent reads the JSON these scripts print and explains the verdict to the
-user. On `block`, do not proceed. On `warn`, surface the risks and ask the user
-to confirm. On `allow`, proceed (and show the explorer link for any on-chain tx).
+Notes: ERC-20 plans may honestly report SIM_REVERT on the operation (the
+approval's allowance is not on-chain yet — the open-source executor resolves
+this by mining each approval before the next check). Plans always use
+exact-amount approvals to the verified FaroSwap spenders — never unlimited.
+Native PHRS cannot be pooled directly; wrap it and use WPHRS.
 
 ## Usage examples
 
@@ -104,57 +103,64 @@ to confirm. On `allow`, proceed (and show the explorer link for any on-chain tx)
    `0x095ea7b3…` to `0xToken…`."
 5. "Run the guard check for paying 0.05 PHRS to my whitelisted vendor, and if it's
    allowed, log the verdict to GuardLog and give me the explorer link."
-6. "Swap 0.5 PHRS to USDC with the firewall checking slippage first."
-7. "How much USDT would I get for 1 USDC on FaroSwap right now? Quote only,
-   don't send anything."
-8. "Add 1 USDC + 1 USDT of liquidity to the FaroSwap stable pool — run every
-   approval through tx-guard and use exact amounts, never unlimited."
-9. "Withdraw half of my FaroSwap LP position #123 back to my wallet, guarded."
+6. "Swap 0.5 PHRS to USDC with the firewall checking slippage first." →
+   guarded quote + verdict + the execution redirect above.
+7. "How much USDT would I get for 1 USDC on FaroSwap right now? Quote only."
+8. "What's the crypto market doing today?" → Market Overview.
+9. "Show me the numbers on SOL." → Token Info.
+10. "I have $100 — what are my options?" → ask the risk profile
+    (low/medium/high) first, then Risk-Based Allocation Ideas.
 
 ## Client interaction flow
 
-1. **Clarification & input gathering** — a guard check needs at minimum the
-   sender, the recipient and the amount. If the client did not specify the
-   **amount** or the **recipient address**, ask for them before running
-   anything (calldata `--data` is optional and only needed for contract calls).
-2. **Run the check** — execute `guard-check.mjs` with the gathered inputs and
-   read the JSON verdict.
-3. **Warn handling** — on a `warn` verdict, present the triggered risks to the
-   client and explicitly ask them to confirm before proceeding. Never treat
-   silence as consent. On `block`, stop and explain why.
-4. **Delivery confirmation** — close the loop by confirming what was delivered:
-   the final verdict, and — if a transaction was sent or a verdict was logged
-   on-chain — the transaction hash with its explorer link.
+1. **Clarification & input gathering** —
+   - *Guard checks* need at minimum the sender, the recipient and the amount;
+     ask for whatever is missing before running anything.
+   - *Allocation ideas* REQUIRE the client's own risk profile. If they have
+     not stated one, ask them to choose — low (capital preservation), medium
+     (balanced), or high (aggressive) — before running
+     `suggest-allocation.mjs`. Never assume or invent it.
+2. **Run the check / fetch the data** — execute the matching script and read
+   the JSON.
+3. **Swap or liquidity requests** — run the dex script for a **guarded
+   quote/plan** (verdict, min return, price impact, route) and present it
+   together with the execution redirect above. There is NO execute step on
+   this platform; never imply you sent, or could send, a transaction.
+4. **Market analytics answers** — present DATA, framed as "options that match
+   your profile" where applicable. NEVER give direct buy/sell advice ("buy X",
+   "you should invest in Y"). End every market-analytics answer with exactly:
+   *"This is market data, not financial advice. Always do your own research."*
+5. **Warn handling** — on a `warn` verdict, present the triggered risks
+   explicitly. On `block`, explain why and how to fix it.
+6. **Delivery confirmation** — close the loop: the final verdict or data
+   delivered, plus the explorer link for any verdict-logging tx.
 
 ## Delivery standards and output format
 
-Every engagement delivers a **structured risk report**:
+Every guard engagement delivers a **structured risk report**:
 
 - `verdict` — `allow` / `warn` / `block`
 - `risks` — the list of triggered rules, each with its severity and a
   one-line explanation
 - `simulation` — the simulation result (success, or revert reason)
+- for dex plans: the quote (expected out, `minReturn`, price impact, route)
+  and the execution `redirect`
 
-On an `allow` verdict that leads to an on-chain action, additionally deliver
-the **transaction hash** and its explorer link on
-[atlantic.pharosscan.xyz](https://atlantic.pharosscan.xyz)
-(`https://atlantic.pharosscan.xyz/tx/<hash>`). Explorer/RPC endpoints come from
-[`assets/networks.json`](assets/networks.json) — do not hard-code them
-elsewhere.
+Every market engagement delivers **data with provenance** (`source`:
+coinmarketcap / coingecko) and ends with the disclaimer. Explorer/RPC
+endpoints come from [`assets/networks.json`](assets/networks.json) — do not
+hard-code them elsewhere.
 
 ## Security
 
-- Never log or commit `PRIVATE_KEY`. It is read from the environment and used
-  only for **On-chain Verdict Logging** (`logVerdict`) and for the DeFi scripts
-  when `--execute` is passed — never for treasury `execute*`.
-- Treasury funds never move through this skill; it only reads policy, simulates,
-  and logs verdicts. Fund movement is the agent's `execute_payment` step, which
-  must itself be gated by an `allow` verdict from this skill.
-- The DeFi scripts (`dex-swap`, `dex-add-liquidity`, `dex-remove-liquidity`)
-  DO send transactions, but only with an explicit `--execute` flag and only
-  after their own firewall pass: `allow` sends, `warn` needs `--yes`, `block`
-  never sends. Approvals are always exact-amount to the verified FaroSwap
-  spenders (`DODOApprove` / position manager) — unlimited allowances are
-  blocked by the EXACT_APPROVE and UNLIMITED_APPROVE rules.
-- All operations target the **Pharos testnet**. Confirm the network before any
-  on-chain write.
+- **This package cannot move funds.** There is no signing key, no wallet
+  integration, and no code path that broadcasts a fund-moving transaction.
+  Swap/liquidity requests end at a safety-checked plan + redirect.
+- `PRIVATE_KEY` is read ONLY by `guard-check.mjs --log` for **On-chain Verdict
+  Logging** (`logVerdict` — an audit-trail write, never `execute*`). Never log
+  or commit it.
+- Market data is read-only public API access (CoinMarketCap / CoinGecko),
+  cached for 60 seconds; a provider outage degrades to a structured
+  `market_data_unavailable` error, never fabricated numbers.
+- All on-chain operations target the **Pharos testnet**. Confirm the network
+  before any on-chain write.

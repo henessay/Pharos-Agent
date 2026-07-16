@@ -9,6 +9,7 @@ import {
   getWalletClient,
   guardTransaction,
   loadDeployments,
+  type MarketDataProvider,
   NATIVE_TOKEN,
   type PolicyStatus,
   pharosTestnet,
@@ -32,6 +33,7 @@ import {
   fixturePolicyStatus,
   makeDryRunClient,
   makeFixtureDexProvider,
+  makeFixtureMarketProvider,
 } from "./fixtures.js";
 import type { ProposedIntent } from "./propose.js";
 
@@ -49,6 +51,8 @@ export interface AgentContext {
   dexProvider?: DexProvider;
   /** Explorer override; dry-run installs an offline stub (rules degrade to "skipped"). */
   explorer?: ExplorerClient;
+  /** Market-data provider override; dry-run installs an offline fixture. */
+  market?: MarketDataProvider;
 }
 
 /** Build the agent context from the environment. `GUARD_DRY_RUN=1` → offline. */
@@ -65,6 +69,7 @@ export function createContext(): AgentContext {
       fixtureState,
       dexProvider: makeFixtureDexProvider(),
       explorer: FIXTURE_EXPLORER,
+      market: makeFixtureMarketProvider(),
     };
   }
   const deployments = loadDeployments();

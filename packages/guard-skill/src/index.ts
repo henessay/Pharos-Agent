@@ -23,6 +23,7 @@ export { aggregateVerdict, type GuardOptions, guardTransaction, hashIntent } fro
 // Errors
 export {
   ContractsNotDeployedError,
+  MarketDataUnavailableError,
   QuoteUnavailableError,
   type StructuredError,
   toStructuredError,
@@ -42,6 +43,8 @@ export {
   type GuardVerdict,
   type ProposedTransaction,
 } from "./guard.js";
+// Market data (advisor role)
+export * from "./market/index.js";
 // On-chain queries
 export {
   guardLogHistory,
