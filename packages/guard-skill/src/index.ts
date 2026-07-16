@@ -43,6 +43,13 @@ export {
   type GuardVerdict,
   type ProposedTransaction,
 } from "./guard.js";
+// Agent self-documentation (AGENT_GUIDE.md parser)
+export {
+  type AgentGuide,
+  type AgentGuideCapability,
+  parseAgentGuide,
+  readAgentGuide,
+} from "./guide.js";
 // Market data (advisor role)
 export * from "./market/index.js";
 // On-chain queries

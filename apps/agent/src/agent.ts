@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline/promises";
 import { toStructuredError } from "@pharos-guard/guard-skill";
 import OpenAI from "openai";
+import { aboutAgent } from "./about.js";
 import { bold, colorVerdict, cyan, gray, green, red, yellow } from "./colors.js";
 import { decideAction, fixHint } from "./decide.js";
 import {
@@ -29,9 +30,10 @@ Routing: a PAYMENT sends tokens TO someone else (needs a recipient address) — 
 
 Advisor rules (market analytics):
 A. NEVER give direct buy/sell recommendations — no "buy X", "sell Y", "you should invest in Z". Present market DATA and frame candidates strictly as "options that match your profile". The final decision is always the user's.
-B. suggest_allocation REQUIRES a risk level. If the user has not stated one, ASK them to choose — low (capital preservation), medium (balanced), or high (aggressive) — before calling the tool. Never assume or invent a risk profile.
+B. suggest_allocation REQUIRES a risk level. If the user already stated one ("high risk", "low risk", …), use it directly — do not re-ask. Only when the user has NOT stated a risk level, ASK them to choose — low (capital preservation), medium (balanced), or high (aggressive) — before calling the tool. Never assume or invent a risk profile.
 C. End EVERY market-analytics answer with exactly: "This is market data, not financial advice. Always do your own research."
 D. If you are deployed without wallet access (marketplace/advisor deployment), you cannot execute swaps: return the guarded quote (verdict, min return, price impact) and redirect execution to the open-source package at https://github.com/henessay/Pharos-Agent. With wallet access (this CLI), the normal confirmed swap flow applies.
+E. When the user asks what you are or can do ("what can you do", "help", "how do I use you", "who are you", "кто ты"), or how to execute a quoted swap themselves: call about_agent and answer FROM its structure — identity in one line, the capability categories with one or two example requests each, the not-doing boundaries, and the links. Keep it short; do not invent capabilities that are not in the guide.
 
 Hard rules (a firewall enforces these in code too):
 1. NEVER call execute_payment without first calling guard_check on the same request. (Payments only — DeFi tools embed their own guard check.)
@@ -182,13 +184,28 @@ export const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "about_agent",
+      description:
+        "The agent's self-description from the canonical user guide: identity, capability categories with example requests, explicit not-doing boundaries, step-by-step instructions for executing a quoted swap self-custodially, the coin-selection methodology, and links (GitHub, contracts on the explorer). Call for 'what can you do', 'help', 'who are you', 'how do I use you', or 'how do I execute the swap myself'.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "market_overview",
       description:
-        "Top coins by market cap with USD prices and 24h/7d/30d changes. Read-only public market data — end the answer with the standard disclaimer.",
+        "Market overview with an explicit sort. sort='market_cap' (default) → the BIGGEST coins — use for 'top coins', 'market overview'. sort='gainers_7d' / 'losers_7d' → MOVERS: best/worst 7-day performers among the top-100 by cap, stablecoins excluded — use for 'top movers', 'what pumped/dumped this week', 'best/worst performers'. NEVER answer a movers question with the market_cap sort: a cap-ranked list is not movers. Read-only — end the answer with the standard disclaimer.",
       parameters: {
         type: "object",
         properties: {
           limit: { type: "number", description: "How many coins to return (default 10)." },
+          sort: {
+            type: "string",
+            enum: ["market_cap", "gainers_7d", "losers_7d"],
+            description:
+              "market_cap for size questions; gainers_7d/losers_7d for movers/performance questions.",
+          },
         },
       },
     },
@@ -240,6 +257,7 @@ export async function dispatch(
     text?: string;
     confirmed?: boolean;
     limit?: number;
+    sort?: string;
     symbol?: string;
     amount_usd?: number;
     risk_level?: string;
@@ -327,11 +345,18 @@ export async function dispatch(
         const res = await removeLiquidity(intent, ctx, args.confirmed === true);
         return { result: json(res), log: `${gray("→")} remove_liquidity… ${execTag(res)}` };
       }
+      case "about_agent": {
+        const guide = aboutAgent();
+        return {
+          result: json(guide),
+          log: `${gray("→")} about_agent… ${Object.keys(guide.capabilities).length} capability categories`,
+        };
+      }
       case "market_overview": {
-        const res = await marketOverview(ctx, args.limit ?? 10);
+        const res = await marketOverview(ctx, args.limit ?? 10, args.sort ?? "market_cap");
         return {
           result: json(res),
-          log: `${gray("→")} market_overview… ${res.coins.length} coins (${res.source})`,
+          log: `${gray("→")} market_overview… ${res.coins.length} coins, sort=${res.sort} (${res.source})`,
         };
       }
       case "token_info": {

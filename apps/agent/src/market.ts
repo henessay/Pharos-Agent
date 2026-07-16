@@ -3,7 +3,10 @@ import {
   type CoinData,
   createMarketProvider,
   MARKET_DISCLAIMER,
+  MARKET_SORTS,
   type MarketDataProvider,
+  type MarketSort,
+  marketOverviewData,
   RISK_LEVELS,
   type RiskLevel,
   suggestAllocationOptions,
@@ -18,15 +21,24 @@ function marketProvider(ctx: AgentContext): MarketDataProvider {
   return createMarketProvider();
 }
 
-/** Tool: top coins by market cap with prices and 24h/7d changes. Read-only. */
+/**
+ * Tool: market overview. `sort` picks the semantics: market_cap = the biggest
+ * coins; gainers_7d / losers_7d = movers by 7-day change among the top-100 by
+ * cap, stablecoins excluded (a pegged ±0.02% is never a "move"). Read-only.
+ */
 export async function marketOverview(
   ctx: AgentContext,
   limit = 10,
-): Promise<{ source: string; coins: CoinData[]; disclaimer: string }> {
+  sort: string = "market_cap",
+): Promise<{ source: string; sort: MarketSort; coins: CoinData[]; disclaimer: string }> {
+  const resolvedSort = (
+    MARKET_SORTS.includes(sort as MarketSort) ? sort : "market_cap"
+  ) as MarketSort;
   const provider = marketProvider(ctx);
   return {
     source: provider.name,
-    coins: await provider.getTopCoins(limit),
+    sort: resolvedSort,
+    coins: await marketOverviewData(provider, limit, resolvedSort),
     disclaimer: MARKET_DISCLAIMER,
   };
 }

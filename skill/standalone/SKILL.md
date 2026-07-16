@@ -74,7 +74,8 @@ Run every command from this skill's directory (paths are relative to it).
 | Safety-check a swap end to end | **Guarded Swap Quote** (verdict + redirect, never executes) | `node scripts/dex-swap.mjs --from PHRS --to USDC --amount 0.5 [--slippage 1]` | [risk-rules.md#rules](references/risk-rules.md#rules) |
 | Plan a liquidity add (full-range V3) | **Guarded Liquidity Plan** | `node scripts/dex-add-liquidity.mjs --token-a USDC --amount-a 1 --token-b USDT --amount-b 1 [--fee 100]` | [risk-rules.md#rules](references/risk-rules.md#rules) |
 | Plan a liquidity withdrawal | **Guarded Withdrawal Plan** | `node scripts/dex-remove-liquidity.mjs --position <id> [--fraction 0.5]` | [risk-rules.md#rules](references/risk-rules.md#rules) |
-| "What's the market doing?" | **Market Overview** | `node scripts/market-overview.mjs [--limit 10]` | — |
+| "What can you do?" / "How do I use you?" | **Explain Capabilities** | `node scripts/about-agent.mjs` (structured self-description from [references/AGENT_GUIDE.md](references/AGENT_GUIDE.md)) | [AGENT_GUIDE.md](references/AGENT_GUIDE.md) |
+| "What's the market doing?" | **Market Overview** | `node scripts/market-overview.mjs [--limit 10] [--sort market_cap\|gainers_7d\|losers_7d]` | — |
 | Details on one coin | **Token Info** | `node scripts/token-info.mjs --symbol BTC` | — |
 | "What could I do with $100?" | **Risk-Based Allocation Ideas** | `node scripts/suggest-allocation.mjs --amount-usd 100 --risk low\|medium\|high` | — |
 
@@ -110,6 +111,12 @@ Native PHRS cannot be pooled directly; wrap it and use WPHRS.
 9. "Show me the numbers on SOL." → Token Info.
 10. "I have $100 — what are my options?" → ask the risk profile
     (low/medium/high) first, then Risk-Based Allocation Ideas.
+11. "What can you do?" → Explain Capabilities: answer from the `about-agent`
+    structure — identity, capability categories with example requests,
+    not-doing boundaries, links.
+12. "How do I execute the swap you quoted?" → relay the step-by-step
+    `executeYourself` instructions from Explain Capabilities (clone the repo →
+    configure env → run the standalone scripts / local agent).
 
 ## Client interaction flow
 

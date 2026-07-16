@@ -2,8 +2,9 @@
 // Standalone tx-guard (ADVISOR): risk-profiled allocation IDEAS — 3-4 coins
 // with live data (price, 7d/30d change, market cap) matching a risk level:
 //   low    → stablecoins + BTC/ETH
-//   medium → top-20 by market cap
-//   high   → smaller caps / newer ecosystems (rank ~21-100)
+//   medium → top-20 by market cap (stables/wrapped excluded)
+//   high   → smaller caps / newer ecosystems (rank ~30-100, |7d| > 5% screen,
+//            spread across the range; stables/wrapped/LST always excluded)
 //
 // These are options that match the profile, NEVER "buy X" instructions, and
 // the answer always ends with the disclaimer. --risk is REQUIRED: if the user

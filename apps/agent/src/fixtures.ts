@@ -215,9 +215,9 @@ const FIXTURE_COINS: CoinData[] = [
   ["WBTC", "Wrapped Bitcoin", 12, 118100, 1.2, 4.7, 11.2, 14e9],
   ["LINK", "Chainlink", 15, 28.4, 2.2, 6.3, 15.8, 18e9],
   ["SUI", "Sui", 22, 4.9, 4.1, 9.4, 31.0, 14e9],
-  ["APT", "Aptos", 30, 11.2, -2.3, 3.8, 18.4, 6.5e9],
+  ["APT", "Aptos", 30, 11.2, -2.3, 8.2, 18.4, 6.5e9],
   ["SEI", "Sei", 55, 0.62, 5.9, 14.2, 42.7, 2.1e9],
-  ["TIA", "Celestia", 80, 5.1, -1.1, -4.6, 12.9, 1.2e9],
+  ["TIA", "Celestia", 80, 5.1, -1.1, -12.4, 12.9, 1.2e9],
 ].map(([symbol, name, rank, priceUsd, c24, c7, c30, marketCapUsd]) => ({
   symbol: symbol as string,
   name: name as string,

@@ -16,12 +16,24 @@ One firewall, three surfaces: a **Pharos Skill**, an **MCP server**, and a demo
 **treasurer agent** — all backed by `TreasuryPolicy` + `GuardLog` contracts on
 the Pharos testnet (chain id `688689`).
 
+Ask the agent *"what can you do?"* — it will explain itself.
+
+## Using the agent
+
+The full user guide lives in [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md):
+what the agent is, the two roles (advisor on the Anvita marketplace vs.
+executor on your own machine), every capability with example requests, how to
+execute a quoted swap yourself step by step, the risk profiles and coin
+selection methodology, limitations, and an FAQ. The same file powers the
+agent's `about_agent` tool, so what it tells you about itself and what you
+read on GitHub can never drift apart.
+
 ## Quick start
 
 ```bash
 pnpm install
 pnpm build
-pnpm test     # 189 tests: contracts (forge) + guard-skill + agent (vitest)
+pnpm test     # 206 tests: contracts (forge) + guard-skill + agent (vitest)
 ```
 
 Then try the firewall offline (no RPC, no keys) via the demo agent's fixtures:

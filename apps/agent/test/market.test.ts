@@ -21,12 +21,38 @@ describe("market analytics tools (GUARD_DRY_RUN fixtures)", () => {
 
   it("market_overview returns coins with prices/changes and the disclaimer", async () => {
     const res = JSON.parse((await dispatch("market_overview", { limit: 5 }, ctx)).result);
+    expect(res.sort).toBe("market_cap");
     expect(res.coins.length).toBeGreaterThanOrEqual(3);
     expect(res.coins[0].symbol).toBe("BTC");
     expect(res.coins[0].priceUsd).toBeGreaterThan(0);
     expect(res.coins[0].change24hPct).not.toBeUndefined();
     expect(res.coins[0].change7dPct).not.toBeUndefined();
     expect(res.disclaimer).toBe(MARKET_DISCLAIMER);
+  });
+
+  // Regression: "top movers this week" once returned the market-cap top-10
+  // with USDT (+0.02%) presented as a "gainer".
+  it("market_overview sort=gainers_7d sorts by 7d change, not by cap, without stables", async () => {
+    const res = JSON.parse(
+      (await dispatch("market_overview", { limit: 5, sort: "gainers_7d" }, ctx)).result,
+    );
+    expect(res.sort).toBe("gainers_7d");
+    const changes = res.coins.map((c: { change7dPct: number }) => c.change7dPct);
+    expect(changes).toEqual([...changes].sort((a: number, b: number) => b - a));
+    expect(res.coins[0].symbol).toBe("SEI"); // biggest 7d move, not biggest cap
+    const symbols = res.coins.map((c: { symbol: string }) => c.symbol);
+    expect(symbols).not.toContain("USDT");
+    expect(symbols).not.toContain("USDC");
+    expect(res.disclaimer).toBe(MARKET_DISCLAIMER);
+  });
+
+  it("market_overview sort=losers_7d sorts ascending by 7d change", async () => {
+    const res = JSON.parse(
+      (await dispatch("market_overview", { limit: 3, sort: "losers_7d" }, ctx)).result,
+    );
+    const changes = res.coins.map((c: { change7dPct: number }) => c.change7dPct);
+    expect(changes).toEqual([...changes].sort((a: number, b: number) => a - b));
+    expect(res.coins.map((c: { symbol: string }) => c.symbol)).not.toContain("USDT");
   });
 
   it("token_info returns one coin in detail with the disclaimer", async () => {
@@ -79,14 +105,17 @@ describe("market analytics tools (GUARD_DRY_RUN fixtures)", () => {
     expect(res.disclaimer).toBe(MARKET_DISCLAIMER);
   });
 
-  it("high risk → 3-4 smaller-cap options (rank 21-100)", async () => {
+  it("high risk → 3-4 smaller-cap options, no stables, nothing from the top-25", async () => {
     const res = JSON.parse(
       (await dispatch("suggest_allocation", { amount_usd: 250, risk_level: "high" }, ctx)).result,
     );
     expect(res.options.length).toBeGreaterThanOrEqual(3);
     expect(res.options.length).toBeLessThanOrEqual(4);
+    const symbols = res.options.map((o: { symbol: string }) => o.symbol);
+    expect(symbols).not.toContain("USDT");
+    expect(symbols).not.toContain("USDC");
     for (const o of res.options) {
-      expect(o.rank).toBeGreaterThan(20);
+      expect(o.rank).toBeGreaterThan(25);
       expect(o.rank).toBeLessThanOrEqual(100);
     }
     expect(res.disclaimer).toBe(MARKET_DISCLAIMER);
