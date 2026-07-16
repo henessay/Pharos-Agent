@@ -9,14 +9,19 @@ export type Severity = "info" | "warn" | "block";
 /** Status of a rule evaluation. */
 export type RiskStatus = "ok" | "triggered" | "skipped";
 
-/** The six risk rules the engine evaluates. */
+/** The risk rules the engine evaluates (DEX rules run only with a DEX context). */
 export type RuleId =
   | "SIM_REVERT"
   | "UNLIMITED_APPROVE"
   | "UNVERIFIED_CONTRACT"
   | "FIRST_INTERACTION"
   | "POLICY_VIOLATION"
-  | "HIGH_VALUE";
+  | "HIGH_VALUE"
+  | "ROUTER_ALLOWLIST"
+  | "EXACT_APPROVE"
+  | "SLIPPAGE_BOUND"
+  | "PRICE_IMPACT"
+  | "LP_RECOGNITION";
 
 /** A single risk finding produced by a rule. */
 export interface Risk {

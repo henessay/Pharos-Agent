@@ -18,16 +18,27 @@ export interface TxListResult {
   error?: string;
 }
 
-/** A blockscout/etherscan-compatible explorer client. Never throws. */
+/** An explorer client. Never throws. */
 export interface ExplorerClient {
   getSourceCode(address: Address): Promise<SourceCodeResult>;
   getTxList(address: Address): Promise<TxListResult>;
 }
 
-interface BlockscoutOptions {
-  /** Full API base, e.g. https://atlantic.pharosscan.xyz/api. */
+/**
+ * Backend serving atlantic.pharosscan.xyz. The pharosscan frontend is a
+ * SvelteKit SPA with no etherscan-compatible `/api` — the real data source is
+ * socialscan (discovered via the frontend bundle; see
+ * docs/faroswap-verification.md).
+ */
+const DEFAULT_API_BASE = "https://api.socialscan.io/pharos-atlantic-testnet";
+
+interface ExplorerOptions {
+  /** Full API base, e.g. https://api.socialscan.io/pharos-atlantic-testnet. */
   apiBase?: string;
-  /** Explorer base used to derive `apiBase` when it is not given. */
+  /**
+   * Explorer frontend URL. Accepted for backwards compatibility but no longer
+   * used to derive the API base (the frontend does not host an API).
+   */
   explorer?: string;
   /** Per-request timeout in ms (default 5000). */
   timeoutMs?: number;
@@ -35,33 +46,44 @@ interface BlockscoutOptions {
   fetchImpl?: typeof fetch;
 }
 
-function resolveApiBase(opts: BlockscoutOptions): string {
+/** Shape of `GET /v1/explorer/address/{addr}/profile` (fields we consume). */
+interface ProfileResponse {
+  is_contract?: boolean;
+  is_verified?: boolean | null;
+  name?: string | null;
+}
+
+/** Shape of `GET /v1/explorer/address/{addr}/transactions` (fields we consume). */
+interface TransactionsResponse {
+  total?: number;
+  data?: { hash?: string; to_address?: string | null }[];
+}
+
+function resolveApiBase(opts: ExplorerOptions): string {
   if (opts.apiBase) return opts.apiBase.replace(/\/+$/, "");
   if (process.env.EXPLORER_API_URL) return process.env.EXPLORER_API_URL.replace(/\/+$/, "");
-  const explorer = (opts.explorer ?? "https://atlantic.pharosscan.xyz").replace(/\/+$/, "");
-  return `${explorer}/api`;
+  return DEFAULT_API_BASE;
 }
 
 /**
- * Create a blockscout-compatible explorer client with graceful degradation:
- * any network error, non-200 response, error status, or unexpected payload
- * resolves to `{ available: false, error }` rather than throwing, so callers
- * can downgrade a rule to an informational "skipped" result.
+ * Create a socialscan-backed explorer client with graceful degradation: any
+ * network error, non-200 response, or unexpected payload resolves to
+ * `{ available: false, error }` rather than throwing, so callers can
+ * downgrade a rule to an informational "skipped" result.
  */
-export function createBlockscoutClient(opts: BlockscoutOptions = {}): ExplorerClient {
+export function createExplorerClient(opts: ExplorerOptions = {}): ExplorerClient {
   const apiBase = resolveApiBase(opts);
   const timeoutMs = opts.timeoutMs ?? 5000;
   const doFetch = opts.fetchImpl ?? globalThis.fetch;
 
-  async function getJson(params: Record<string, string>): Promise<unknown> {
+  async function getJson(path: string): Promise<unknown> {
     if (typeof doFetch !== "function") {
       throw new Error("no fetch implementation available");
     }
-    const url = `${apiBase}?${new URLSearchParams(params).toString()}`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await doFetch(url, { signal: controller.signal });
+      const res = await doFetch(`${apiBase}${path}`, { signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
     } finally {
@@ -72,18 +94,16 @@ export function createBlockscoutClient(opts: BlockscoutOptions = {}): ExplorerCl
   return {
     async getSourceCode(address) {
       try {
-        const json = (await getJson({
-          module: "contract",
-          action: "getsourcecode",
-          address,
-        })) as { status?: string; result?: Array<{ SourceCode?: string; ContractName?: string }> };
+        const json = (await getJson(
+          `/v1/explorer/address/${address.toLowerCase()}/profile`,
+        )) as ProfileResponse;
 
-        const entry = Array.isArray(json.result) ? json.result[0] : undefined;
-        if (!entry) return { available: false, error: "unexpected response shape" };
+        if (typeof json !== "object" || json === null || json.is_contract === undefined) {
+          return { available: false, error: "unexpected response shape" };
+        }
 
-        const verified = Boolean(entry.SourceCode && entry.SourceCode.length > 0);
-        const result: SourceCodeResult = { available: true, verified };
-        if (entry.ContractName) result.contractName = entry.ContractName;
+        const result: SourceCodeResult = { available: true, verified: json.is_verified === true };
+        if (json.name) result.contractName = json.name;
         return result;
       } catch (err) {
         return { available: false, error: err instanceof Error ? err.message : String(err) };
@@ -92,25 +112,15 @@ export function createBlockscoutClient(opts: BlockscoutOptions = {}): ExplorerCl
 
     async getTxList(address) {
       try {
-        const json = (await getJson({
-          module: "account",
-          action: "txlist",
-          address,
-          page: "1",
-          offset: "100",
-          sort: "desc",
-        })) as { status?: string; result?: unknown };
+        const json = (await getJson(
+          `/v1/explorer/address/${address.toLowerCase()}/transactions?page=1&size=100`,
+        )) as TransactionsResponse;
 
-        if (!Array.isArray(json.result)) {
-          // blockscout returns status "0" + message "No transactions found" for empty accounts.
-          if (json.status === "0") return { available: true, txs: [] };
+        if (!Array.isArray(json.data)) {
           return { available: false, error: "unexpected response shape" };
         }
 
-        const txs = (json.result as Array<{ to?: string | null; hash?: string }>).map((t) => ({
-          to: t.to ?? null,
-          hash: t.hash ?? "",
-        }));
+        const txs = json.data.map((t) => ({ to: t.to_address ?? null, hash: t.hash ?? "" }));
         return { available: true, txs };
       } catch (err) {
         return { available: false, error: err instanceof Error ? err.message : String(err) };
@@ -118,3 +128,6 @@ export function createBlockscoutClient(opts: BlockscoutOptions = {}): ExplorerCl
     },
   };
 }
+
+/** @deprecated The explorer backend is socialscan, not blockscout — use {@link createExplorerClient}. */
+export const createBlockscoutClient = createExplorerClient;

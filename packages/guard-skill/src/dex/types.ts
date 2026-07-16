@@ -2,12 +2,20 @@ import type { Address, Hex } from "viem";
 
 /**
  * Sentinel address DEX aggregators (DODO-style) use for the native token.
- * Distinct from the guard-skill's `NATIVE_TOKEN` (zero address) — convert at
- * the provider boundary.
+ * Distinct from the guard-skill's `NATIVE_TOKEN` (zero address) — providers
+ * convert at their boundary and quotes always carry the sentinel.
  */
 export const DEX_NATIVE_SENTINEL: Address = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
-/** A quote for swapping `fromToken` → `toToken`. */
+/** One hop of a swap route. */
+export interface DexRouteHop {
+  fromToken: Address;
+  toToken: Address;
+  /** Pools serving this hop (a hop can be split across several). */
+  pools: { pool: Address; poolName: string }[];
+}
+
+/** A quote for swapping `fromToken` → `toToken`, ready to become a tx. */
 export interface DexQuote {
   fromToken: Address;
   toToken: Address;
@@ -19,31 +27,40 @@ export interface DexQuote {
   minReturnAmount: bigint;
   /** Price impact as a fraction (0.01 = 1%), when the venue reports it. */
   priceImpact?: number;
-  /** Venue-specific route description, for logging / guard reports. */
-  routeSummary?: string;
-  /** Opaque venue payload needed to build the swap tx from this quote. */
+  /** Route hops, first hop's fromToken may be the wrapped native. */
+  route: DexRouteHop[];
+  /** Tx target the venue built the calldata for (must be the known router). */
+  to: Address;
+  /** Ready-to-send calldata (e.g. mixSwap). */
+  data: Hex;
+  /** Native value in wei (equals fromAmount when spending native). */
+  value: bigint;
+  /** Venue-suggested gas limit, if reported. */
+  gasLimit?: bigint;
+  /** Full venue response payload, for diagnostics. */
   raw: unknown;
 }
 
-/**
- * An unsigned transaction request produced by a provider. This is the unit
- * the guard engine inspects — providers build, they never send.
- */
+/** An unsigned transaction request produced by a provider. */
 export interface DexTxRequest {
   to: Address;
   data: Hex;
-  /** Native value in wei (non-zero when spending the native token). */
+  /** Native value in wei. */
   value: bigint;
-  /** Venue-suggested gas limit, if any. */
   gasLimit?: bigint;
-  /**
-   * Spender that needs an ERC-20 allowance before this tx can succeed
-   * (e.g. DODOApprove), or null when no approval is required.
-   */
-  approvalTarget: Address | null;
+}
+
+/**
+ * A provider's output: zero or more exact-amount approvals to send first,
+ * then the operation tx. Providers build, they never sign or send.
+ */
+export interface DexTxPlan {
+  approvals: DexTxRequest[];
+  tx: DexTxRequest;
 }
 
 export interface QuoteParams {
+  /** Input token; the zero address or the DEX sentinel both mean native. */
   fromToken: Address;
   toToken: Address;
   fromAmount: bigint;
@@ -60,23 +77,27 @@ export interface AddLiquidityParams {
   amountB: bigint;
   slippagePct: number;
   userAddress: Address;
-  /** Venue-specific extras (fee tier, tick range for V3-style pools). */
-  options?: Record<string, unknown>;
+  /** V3 fee tier in hundredths of a bip (100 / 500 / 3000 / 10000). */
+  fee?: number;
 }
 
 export interface RemoveLiquidityParams {
-  /** Position identifier: LP token address or V3-style position tokenId. */
-  position: Address | bigint;
+  /** V3-style position tokenId. */
+  tokenId: bigint;
   /** Fraction of the position to withdraw, 0 < x <= 1. */
   fraction: number;
   slippagePct: number;
   userAddress: Address;
-  options?: Record<string, unknown>;
+  /**
+   * Current position liquidity. When omitted the provider reads it from the
+   * position manager (requires a publicClient).
+   */
+  liquidity?: bigint;
 }
 
 /**
  * A DEX integration. Implementations only *read* (RPC, quote APIs) and
- * *build* unsigned transactions; sending and signing stay with the caller,
+ * *build* unsigned transactions; signing and sending stay with the caller,
  * behind the guard engine.
  */
 export interface DexProvider {
@@ -85,7 +106,7 @@ export interface DexProvider {
   readonly chainId: number;
 
   getQuote(params: QuoteParams): Promise<DexQuote>;
-  buildSwapTx(quote: DexQuote): Promise<DexTxRequest>;
-  buildAddLiquidityTx(params: AddLiquidityParams): Promise<DexTxRequest>;
-  buildRemoveLiquidityTx(params: RemoveLiquidityParams): Promise<DexTxRequest>;
+  buildSwapTx(quote: DexQuote): Promise<DexTxPlan>;
+  buildAddLiquidityTx(params: AddLiquidityParams): Promise<DexTxPlan>;
+  buildRemoveLiquidityTx(params: RemoveLiquidityParams): Promise<DexTxPlan>;
 }

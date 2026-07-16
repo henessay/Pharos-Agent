@@ -228,6 +228,21 @@ describe("guardTransaction", () => {
     expect(writeContract).toHaveBeenCalledOnce();
   });
 
+  it("runs the DEX rules only when a DEX context is supplied", async () => {
+    const intent: GuardIntent = { from: AGENT, to: RECIPIENT, value: 1n };
+    const plain = await guardTransaction(intent, baseOpts(fakePublicClient({ code: "0x" })));
+    expect(plain.risks.map((r) => r.rule)).not.toContain("ROUTER_ALLOWLIST");
+
+    const withDex = await guardTransaction(intent, {
+      ...baseOpts(fakePublicClient({ code: "0x" })),
+      dex: { agentAddress: AGENT },
+    });
+    // RECIPIENT is not a FaroSwap contract → the allowlist blocks the DEX intent.
+    const allowlist = risk(withDex.risks, "ROUTER_ALLOWLIST");
+    expect(allowlist.status).toBe("triggered");
+    expect(withDex.verdict).toBe("block");
+  });
+
   it("never throws when GuardLog write fails", async () => {
     const walletClient = {
       account: { address: AGENT },
