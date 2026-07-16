@@ -20,6 +20,14 @@ import { PHAROS_TESTNET_CHAIN_ID, pharosTestnet } from "./chain.js";
 import { type Deployments, loadDeployments } from "./deployments.js";
 import { createBlockscoutClient, type ExplorerClient } from "./explorer.js";
 import {
+  type DexGuardContext,
+  ruleExactApprove,
+  ruleLpRecognition,
+  rulePriceImpact,
+  ruleRouterAllowlist,
+  ruleSlippageBound,
+} from "./rules/index.js";
+import {
   type DecodedCall,
   type GuardIntent,
   type GuardReport,
@@ -45,6 +53,12 @@ export interface GuardOptions {
   log?: boolean;
   /** Chain id used in the intent hash. Defaults to the Pharos testnet id. */
   chainId?: number;
+  /**
+   * DEX context. When set, the intent is treated as a DEX operation and the
+   * five DEX rules (ROUTER_ALLOWLIST, EXACT_APPROVE, SLIPPAGE_BOUND,
+   * PRICE_IMPACT, LP_RECOGNITION) run in addition to the base six.
+   */
+  dex?: DexGuardContext;
 }
 
 const POLICY_MESSAGES: Record<string, string> = {
@@ -320,8 +334,10 @@ function summaryReason(verdict: Verdict, risks: Risk[]): string {
 /**
  * Evaluate a transaction intent and produce a {@link GuardReport}.
  *
- * Runs all six risk rules (SIM_REVERT, UNLIMITED_APPROVE, UNVERIFIED_CONTRACT,
- * FIRST_INTERACTION, POLICY_VIOLATION, HIGH_VALUE), aggregates them into a
+ * Runs the six base risk rules (SIM_REVERT, UNLIMITED_APPROVE,
+ * UNVERIFIED_CONTRACT, FIRST_INTERACTION, POLICY_VIOLATION, HIGH_VALUE) plus,
+ * when `opts.dex` is set, the five DEX rules (ROUTER_ALLOWLIST, EXACT_APPROVE,
+ * SLIPPAGE_BOUND, PRICE_IMPACT, LP_RECOGNITION), aggregates them into a
  * verdict, and — when `opts.log` is set — records the verdict to GuardLog.
  * Logging failures are captured in `report.logError` and never throw.
  */
@@ -345,6 +361,16 @@ export async function guardTransaction(
     await rulePolicyViolation(decoded, opts.publicClient, deployments),
     ruleHighValue(intent, decoded, threshold),
   ];
+
+  if (opts.dex) {
+    risks.push(
+      ruleRouterAllowlist(intent),
+      ruleExactApprove(decoded, opts.dex),
+      ruleSlippageBound(intent, opts.dex),
+      rulePriceImpact(opts.dex),
+      ruleLpRecognition(intent, opts.dex),
+    );
+  }
 
   const intentHash = hashIntent(intent, chainId);
   const verdict = aggregateVerdict(risks);

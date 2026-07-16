@@ -16,17 +16,21 @@ export {
   loadDeployments,
   requireDeployments,
 } from "./deployments.js";
+// DEX providers (FaroSwap)
+export * from "./dex/index.js";
 // Risk engine
 export { aggregateVerdict, type GuardOptions, guardTransaction, hashIntent } from "./engine.js";
 // Errors
 export {
   ContractsNotDeployedError,
+  QuoteUnavailableError,
   type StructuredError,
   toStructuredError,
 } from "./errors.js";
 // Explorer client
 export {
   createBlockscoutClient,
+  createExplorerClient,
   type ExplorerClient,
   type SourceCodeResult,
   type TxListResult,
@@ -45,6 +49,15 @@ export {
   policyStatus,
   type VerdictEntry,
 } from "./queries.js";
+// DEX guard rules
+export {
+  type DexGuardContext,
+  ruleExactApprove,
+  ruleLpRecognition,
+  rulePriceImpact,
+  ruleRouterAllowlist,
+  ruleSlippageBound,
+} from "./rules/index.js";
 // Runtime client builders
 export {
   accountFromEnv,

@@ -14,15 +14,29 @@ export class ContractsNotDeployedError extends Error {
   }
 }
 
+/** Error thrown when the DEX route API cannot produce a usable quote. */
+export class QuoteUnavailableError extends Error {
+  /** Stable, machine-readable code surfaced to MCP / agent consumers. */
+  readonly code = "quote_unavailable";
+  /** What failed on the last attempt (timeout, HTTP status, API error…). */
+  readonly cause?: unknown;
+
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = "QuoteUnavailableError";
+    this.cause = cause;
+  }
+}
+
 /** Structured error payload returned by MCP tools / wrappers instead of throwing. */
 export interface StructuredError {
   error: string;
   message: string;
 }
 
-/** Convert any error into a {@link StructuredError}; `contracts_not_deployed` is preserved. */
+/** Convert any error into a {@link StructuredError}; known error codes are preserved. */
 export function toStructuredError(err: unknown): StructuredError {
-  if (err instanceof ContractsNotDeployedError) {
+  if (err instanceof ContractsNotDeployedError || err instanceof QuoteUnavailableError) {
     return { error: err.code, message: err.message };
   }
   const message = err instanceof Error ? err.message : String(err);
