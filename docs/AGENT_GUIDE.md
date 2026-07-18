@@ -48,6 +48,14 @@ Lighthouse Agent is a **Guarded DeFi Advisor** for the Pharos Atlantic Testnet: 
 
 **Try:** "Swap 0.5 PHRS to USDC with the firewall checking slippage first" · "How much USDT would I get for 1 USDC right now?" · "Quote only, don't send anything"
 
+### Wallet check-up
+- Read-only audit of any address: portfolio (balances, USD where a market price exists), ERC-20 approvals, scam check, gas spent over 7/30 days, health score
+- Approval risk levels reuse the firewall's logic: unlimited allowance → critical, spender without contract code (EOA) → critical, spender outside the confirmed allowlist → warning
+- Transparent 0-100 health score — the formula ships inside every report
+- Revoke plan for risky approvals: ready approve(spender, 0) transactions, each pre-vetted by the firewall — you execute them from your own wallet; the agent never does
+
+**Try:** "Check my wallet 0x… — show approvals, risks and gas spent" · "Is my wallet safe?" · "Проверь кошелёк 0x…"
+
 ## What the agent will NOT do
 
 - Execute transactions on the marketplace — it has no access to your wallet there; you always get a safety-checked plan and instructions instead
@@ -55,6 +63,7 @@ Lighthouse Agent is a **Guarded DeFi Advisor** for the Pharos Atlantic Testnet: 
 - Work with mainnet — all on-chain operations target the Pharos Atlantic **Testnet** (chain id 688689)
 - Assume your risk profile — allocation ideas require you to state low, medium or high
 - Bypass its own firewall — there is no code path around the guard, and block verdicts never execute
+- Execute revokes from a wallet check-up — the revoke plan is advice; you send the approve(spender, 0) transactions yourself
 
 ## Execute a quoted swap yourself
 

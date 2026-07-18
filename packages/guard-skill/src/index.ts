@@ -88,3 +88,5 @@ export {
   type Verdict,
   verdictToCode,
 } from "./types.js";
+// Wallet check-up (read-only advisor)
+export * from "./wallet/index.js";

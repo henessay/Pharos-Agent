@@ -4,6 +4,7 @@ import {
   type Deployments,
   type DexProvider,
   type DexQuote,
+  DODO_APPROVE,
   DODO_ROUTE_PROXY,
   dodoRouteProxyAbi,
   type ExplorerClient,
@@ -11,10 +12,12 @@ import {
   type MarketDataProvider,
   MarketDataUnavailableError,
   NATIVE_TOKEN,
+  POSITION_MANAGER,
   type PolicyStatus,
   type QuoteParams,
   USDC,
   USDT,
+  type WalletCheckupOptions,
   WPHRS,
 } from "@pharos-guard/guard-skill";
 import {
@@ -244,6 +247,92 @@ export function makeFixtureMarketProvider(): MarketDataProvider {
       const wanted = new Set(symbols.map((s) => s.toUpperCase()));
       return FIXTURE_COINS.filter((c) => wanted.has(c.symbol));
     },
+  };
+}
+
+// --- wallet check-up fixtures (GUARD_DRY_RUN) -------------------------------
+
+/** Verified FaroSwap contracts the fixture chain reports code for. */
+const FIXTURE_CONTRACTS = new Set(
+  [DODO_APPROVE, DODO_ROUTE_PROXY, POSITION_MANAGER, USDC, USDT, WPHRS].map((a) => a.toLowerCase()),
+);
+
+/**
+ * Offline dependencies for the wallet_checkup tool under GUARD_DRY_RUN: a
+ * PublicClient answering allowance/balance/bytecode reads from canned state
+ * (one exact-amount USDC allowance to the verified DODOApprove — a clean
+ * wallet), a socialscan-shaped gas fetch, and the fixture market provider.
+ * The REAL wallet check-up pipeline runs over these end to end.
+ */
+export function makeFixtureWalletDeps(ctx: {
+  market?: MarketDataProvider;
+  explorer?: ExplorerClient;
+}): WalletCheckupOptions {
+  const now = Date.now();
+  const publicClient = {
+    call: async () => ({ data: "0x" }),
+    getBalance: async () => parseEther("5"),
+    getCode: async ({ address }: { address: Address }) =>
+      FIXTURE_CONTRACTS.has(address.toLowerCase()) ? "0x6001" : undefined,
+    readContract: async ({
+      address,
+      functionName,
+      args,
+    }: {
+      address: Address;
+      functionName: string;
+      args?: unknown[];
+    }) => {
+      if (functionName === "allowance") {
+        const spender = ((args?.[1] as string) ?? "").toLowerCase();
+        if (
+          address.toLowerCase() === USDC.toLowerCase() &&
+          spender === DODO_APPROVE.toLowerCase()
+        ) {
+          return 1_000_000n; // exact 1 USDC to the verified FaroSwap spender
+        }
+        return 0n;
+      }
+      if (functionName === "balanceOf") {
+        if (address.toLowerCase() === USDC.toLowerCase()) return 2_500_000n; // 2.5 USDC
+        if (address.toLowerCase() === USDT.toLowerCase()) return 1_000_000n; // 1 USDT
+        return 0n;
+      }
+      return undefined;
+    },
+  } as unknown as PublicClient;
+
+  // Echo the requested address back as the fee payer, so any checked address
+  // gets deterministic gas numbers in the offline demo.
+  const gasFetch = (async (url: RequestInfo | URL) => {
+    const addr = /address\/(0x[0-9a-fA-F]{40})\//.exec(String(url))?.[1]?.toLowerCase() ?? "";
+    return {
+      ok: true,
+      json: async () => ({
+        total: 2,
+        data: [
+          {
+            from_address: addr,
+            block_timestamp: new Date(now - 86_400_000).toISOString(),
+            transaction_fee: "0.00021",
+          },
+          {
+            from_address: addr,
+            block_timestamp: new Date(now - 10 * 86_400_000).toISOString(),
+            transaction_fee: "0.000265",
+          },
+        ],
+      }),
+    };
+  }) as unknown as typeof fetch;
+
+  return {
+    publicClient,
+    deployments: FIXTURE_DEPLOYMENTS,
+    explorer: ctx.explorer ?? FIXTURE_EXPLORER,
+    market: ctx.market ?? makeFixtureMarketProvider(),
+    goplus: null,
+    gasFetch,
   };
 }
 

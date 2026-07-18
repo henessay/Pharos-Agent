@@ -23,8 +23,11 @@ import {
   getPolicyStatus,
   guardCheck,
 } from "./tools.js";
+import { runWalletCheckup } from "./wallet.js";
 
-export const SYSTEM_PROMPT = `You are a Pharos treasury agent and Guarded DeFi Advisor. You move PHRS out of a TreasuryPolicy contract on the Pharos testnet on the user's behalf, trade on FaroSwap (swap between PHRS, WPHRS, USDC and USDT via get_quote / swap_tokens; manage full-range LP positions via add_liquidity / remove_liquidity), and provide market analytics (market_overview / token_info / suggest_allocation).
+export const SYSTEM_PROMPT = `You are a Pharos treasury agent and Guarded DeFi Advisor. You move PHRS out of a TreasuryPolicy contract on the Pharos testnet on the user's behalf, trade on FaroSwap (swap between PHRS, WPHRS, USDC and USDT via get_quote / swap_tokens; manage full-range LP positions via add_liquidity / remove_liquidity), provide market analytics (market_overview / token_info / suggest_allocation), and audit wallets (wallet_checkup).
+
+Wallet check-up: for "check my wallet", "is my wallet safe", "audit this address", "проверь кошелёк" and similar → call wallet_checkup with the 0x address. If the user gave no address, ASK for it first — never invent one. The check-up is read-only: present Portfolio, Approvals (with risk levels), Scam check, Gas Spent, the Health Score with its formula, and the Revoke Plan. NEVER offer to execute revokes: each plan entry is a ready approve(spender, 0) transaction the user sends themselves (in advisor deployments point them to https://github.com/henessay/Pharos-Agent).
 
 Routing: a PAYMENT sends tokens TO someone else (needs a recipient address) — use propose_payment / guard_check / execute_payment. A SWAP exchanges one token for another with no recipient (the output lands in the agent's own wallet) — use get_quote / swap_tokens directly; the firewall runs inside those tools, so do NOT call guard_check or propose_payment for swaps or liquidity.
 
@@ -184,6 +187,25 @@ export const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "wallet_checkup",
+      description:
+        "Read-only Wallet Check-up for a 0x address: portfolio (balances + USD where priced), ERC-20 approvals with risk classification (unlimited / EOA spender / unknown spender), scam check (where supported), gas spent over 7/30 days, a transparent 0-100 health score, and a firewall-vetted revoke plan (approve(spender, 0) intents the USER executes — this tool never sends anything). Use for 'check my wallet', 'is my wallet safe', 'audit 0x…'. If no address was given, ask the user for it instead of calling this.",
+      parameters: {
+        type: "object",
+        properties: {
+          address: {
+            type: "string",
+            description:
+              "The wallet address to audit, e.g. '0x38a7…a945'. Full 42-char 0x address.",
+          },
+        },
+        required: ["address"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "about_agent",
       description:
         "The agent's self-description from the canonical user guide: identity, capability categories with example requests, explicit not-doing boundaries, step-by-step instructions for executing a quoted swap self-custodially, the coin-selection methodology, and links (GitHub, contracts on the explorer). Call for 'what can you do', 'help', 'who are you', 'how do I use you', or 'how do I execute the swap myself'.",
@@ -261,6 +283,7 @@ export async function dispatch(
     symbol?: string;
     amount_usd?: number;
     risk_level?: string;
+    address?: string;
   },
   ctx: AgentContext,
 ): Promise<{ result: string; log: string }> {
@@ -344,6 +367,14 @@ export async function dispatch(
           };
         const res = await removeLiquidity(intent, ctx, args.confirmed === true);
         return { result: json(res), log: `${gray("→")} remove_liquidity… ${execTag(res)}` };
+      }
+      case "wallet_checkup": {
+        const res = await runWalletCheckup(args.address, ctx);
+        if ("error" in res) {
+          return { result: json(res), log: `${gray("→")} wallet_checkup… ${yellow(res.error)}` };
+        }
+        const tag = `score ${res.health.score}/100 (${res.health.grade}), ${res.revokePlan.length} revoke item(s)`;
+        return { result: json(res), log: `${gray("→")} wallet_checkup… ${tag}` };
       }
       case "about_agent": {
         const guide = aboutAgent();

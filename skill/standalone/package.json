@@ -1,8 +1,8 @@
 {
   "name": "tx-guard",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "Standalone tx-guard skill package (Guarded DeFi Advisor) — the risk-engine core (incl. viem) is bundled into lib/guard-skill.mjs, so the scripts run with Node >= 20 alone: no install, no build step. Guarded FaroSwap quotes/plans (never executes — redirects to the open-source executor) plus read-only market analytics (overview / token info / risk-based allocation ideas).",
+  "description": "Guarded DeFi advisor for Pharos: transaction firewall (11 rules), market analysis, risk-based allocation ideas, safety-checked swap quotes, read-only wallet check-up with revoke plan. Self-contained: Node >= 20, no install, never executes.",
   "license": "MIT",
   "type": "module",
   "engines": {

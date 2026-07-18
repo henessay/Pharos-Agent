@@ -1,33 +1,46 @@
 ---
 name: tx-guard
 description: >
-  REQUIRED before any AI agent signs a transaction on Pharos, and the home of
-  the Guarded DeFi Advisor. tx-guard is a transaction firewall: it SIMULATES a
-  proposed transaction, DECODES its calldata, runs six base risk rules
-  (sim-revert, unlimited-approve, unverified-contract, first-interaction,
-  treasury-policy, high-value) plus five DEX rules for FaroSwap operations
-  (router-allowlist, exact-approve, slippage-bound, price-impact,
-  lp-recognition), and returns a verdict (allow / warn / block) BEFORE anything
-  is signed — then optionally records that verdict on-chain to a GuardLog
-  contract. As an advisor it also provides read-only market analytics: top-coin
-  overview, per-token data, and risk-profiled allocation ideas (never direct
-  buy/sell advice). THIS MARKETPLACE BUILD EXECUTES NOTHING: swap and liquidity
-  requests return a safety-checked plan plus a redirect to the open-source
-  executor — it has no access to user wallets. Invoke whenever an agent is
-  about to send PHRS/PROS, `approve` a token, swap tokens, manage an LP
-  position, call a contract write method, run a treasury payment on Pharos —
-  or when the user asks about market prices, "what's the market doing", token
-  stats, portfolio/allocation ideas, or mentions "tx-guard", "guard check",
-  "is it safe to send", "risk report", "treasury policy", "spending limit",
-  "allowlist", "unlimited approve", "swap", "liquidity", "FaroSwap",
-  "pharos", "PHRS", or "PROS".
-version: 0.3.0
+  Guarded DeFi advisor for Pharos: transaction firewall (11 rules), market
+  analysis, risk-based allocation ideas, safety-checked swap quotes, and a
+  read-only Wallet Check-up (approvals, risks, gas spent, health score, revoke
+  plan). Verdicts logged on-chain.
+version: 0.4.0
 requires:
   anyBins:
     - node
 ---
 
 # tx-guard — Pharos transaction firewall & Guarded DeFi Advisor
+
+## When to invoke
+
+REQUIRED before any AI agent signs a transaction on Pharos. tx-guard
+SIMULATES a proposed transaction, DECODES its calldata, runs six base risk
+rules (sim-revert, unlimited-approve, unverified-contract, first-interaction,
+treasury-policy, high-value) plus five DEX rules for FaroSwap operations
+(router-allowlist, exact-approve, slippage-bound, price-impact,
+lp-recognition), and returns a verdict (allow / warn / block) BEFORE anything
+is signed — then optionally records that verdict on-chain to a GuardLog
+contract. As an advisor it also provides read-only market analytics: top-coin
+overview and movers, per-token data, and risk-profiled allocation ideas
+(never direct buy/sell advice). THIS MARKETPLACE BUILD EXECUTES NOTHING: swap
+and liquidity requests return a safety-checked plan plus a redirect to the
+open-source executor — it has no access to user wallets.
+
+It also performs a read-only **Wallet Check-up**: portfolio, ERC-20 approvals
+with risk levels, scam check, gas spent, a transparent health score, and a
+firewall-vetted revoke plan the user executes themselves.
+
+Invoke whenever an agent is about to send PHRS/PROS, `approve` a token, swap
+tokens, manage an LP position, call a contract write method, run a treasury
+payment on Pharos — or when the user asks about market prices, "what's the
+market doing", token stats, portfolio/allocation ideas, what the agent can
+do, to check/audit a wallet ("check my wallet", "is my wallet safe",
+"проверь кошелёк"), or mentions "tx-guard", "guard check", "is it safe to
+send", "risk report", "treasury policy", "spending limit", "allowlist",
+"unlimited approve", "swap", "liquidity", "FaroSwap", "pharos", "PHRS", or
+"PROS".
 
 Vet AI-agent transactions on the **Pharos Atlantic Testnet** (chain id
 `688689`) before they are signed, and answer market questions with data — not
@@ -78,6 +91,7 @@ Run every command from this skill's directory (paths are relative to it).
 | "What's the market doing?" | **Market Overview** | `node scripts/market-overview.mjs [--limit 10] [--sort market_cap\|gainers_7d\|losers_7d]` | — |
 | Details on one coin | **Token Info** | `node scripts/token-info.mjs --symbol BTC` | — |
 | "What could I do with $100?" | **Risk-Based Allocation Ideas** | `node scripts/suggest-allocation.mjs --amount-usd 100 --risk low\|medium\|high` | — |
+| "Check my wallet" / "Is my wallet safe?" | **Wallet Check-up** (read-only: portfolio, approvals + risk levels, scam check, gas spent 7/30d, health score 0-100, revoke plan) | `node scripts/wallet-checkup.mjs --address 0x…` (ask for the address if not given) | — |
 
 **No execution, by design.** The dex scripts quote, build and firewall-check a
 plan, then STOP. Every dex-script response carries this redirect, which you
@@ -117,6 +131,13 @@ Native PHRS cannot be pooled directly; wrap it and use WPHRS.
 12. "How do I execute the swap you quoted?" → relay the step-by-step
     `executeYourself` instructions from Explain Capabilities (clone the repo →
     configure env → run the standalone scripts / local agent).
+13. "Check my wallet 0x… — show approvals, risks and gas spent." → Wallet
+    Check-up: full report (portfolio / approvals with risk levels / scam
+    check / gas spent / health score with its formula / revoke plan).
+14. "Is my wallet safe?" → ask for the 0x address if not given, then Wallet
+    Check-up; on risky approvals relay the revoke plan — ready
+    `approve(spender, 0)` transactions the user sends from their own wallet
+    (this package never executes them).
 
 ## Client interaction flow
 
@@ -171,3 +192,7 @@ hard-code them elsewhere.
   `market_data_unavailable` error, never fabricated numbers.
 - All on-chain operations target the **Pharos testnet**. Confirm the network
   before any on-chain write.
+- The Wallet Check-up is **fully read-only** (RPC reads + public explorer /
+  GoPlus APIs). Its revoke plan is advice: pre-vetted `approve(spender, 0)`
+  intents the wallet owner executes themselves — there is no code path here
+  that could send them.
