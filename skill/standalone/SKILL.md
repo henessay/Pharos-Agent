@@ -2,10 +2,11 @@
 name: tx-guard
 description: >
   Guarded DeFi advisor for Pharos: transaction firewall (11 rules), market
-  analysis, risk-based allocation ideas, safety-checked swap quotes, and a
-  read-only Wallet Check-up (approvals, risks, gas spent, health score, revoke
-  plan). Verdicts logged on-chain.
-version: 0.4.0
+  analysis, risk-based allocation ideas, safety-checked swap quotes, read-only
+  Wallet Check-up (approvals, risks, gas spent, health score, revoke plan),
+  and RWA vs DeFi yield comparison (tokenized treasuries vs pools). Verdicts
+  logged on-chain.
+version: 0.5.0
 requires:
   anyBins:
     - node
@@ -37,10 +38,11 @@ tokens, manage an LP position, call a contract write method, run a treasury
 payment on Pharos — or when the user asks about market prices, "what's the
 market doing", token stats, portfolio/allocation ideas, what the agent can
 do, to check/audit a wallet ("check my wallet", "is my wallet safe",
-"проверь кошелёк"), or mentions "tx-guard", "guard check", "is it safe to
-send", "risk report", "treasury policy", "spending limit", "allowlist",
-"unlimited approve", "swap", "liquidity", "FaroSwap", "pharos", "PHRS", or
-"PROS".
+"проверь кошелёк"), to compare yields ("compare RWA vs DeFi yields",
+"tokenized treasuries", "где доходность"), or mentions "tx-guard", "guard
+check", "is it safe to send", "risk report", "treasury policy", "spending
+limit", "allowlist", "unlimited approve", "swap", "liquidity", "FaroSwap",
+"RWA", "JTRSY", "JAAA", "pharos", "PHRS", or "PROS".
 
 Vet AI-agent transactions on the **Pharos Atlantic Testnet** (chain id
 `688689`) before they are signed, and answer market questions with data — not
@@ -92,6 +94,7 @@ Run every command from this skill's directory (paths are relative to it).
 | Details on one coin | **Token Info** | `node scripts/token-info.mjs --symbol BTC` | — |
 | "What could I do with $100?" | **Risk-Based Allocation Ideas** | `node scripts/suggest-allocation.mjs --amount-usd 100 --risk low\|medium\|high` | — |
 | "Check my wallet" / "Is my wallet safe?" | **Wallet Check-up** (read-only: portfolio, approvals + risk levels, scam check, gas spent 7/30d, health score 0-100, revoke plan) | `node scripts/wallet-checkup.mjs --address 0x…` (ask for the address if not given) | — |
+| "Compare RWA vs DeFi yields" | **RWA vs DeFi Yields** (read-only table: Centrifuge JTRSY/JAAA + RWA projects vs top DeFi stable/volatile pools, APY/TVL/risk notes, DefiLlama data) | `node scripts/yield-comparison.mjs [--category all\|rwa\|stable]` | — |
 
 **No execution, by design.** The dex scripts quote, build and firewall-check a
 plan, then STOP. Every dex-script response carries this redirect, which you
@@ -138,6 +141,12 @@ Native PHRS cannot be pooled directly; wrap it and use WPHRS.
     Check-up; on risky approvals relay the revoke plan — ready
     `approve(spender, 0)` transactions the user sends from their own wallet
     (this package never executes them).
+15. "Compare RWA vs DeFi yields — where do tokenized treasuries stand?" →
+    RWA vs DeFi Yields: relay the table (instrument / type / APY / TVL /
+    risk note) plus its `methodology` line.
+16. "Где сейчас доходность — RWA или DeFi-пулы?" → RWA vs DeFi Yields
+    (category `all`); present rows as DATA with the per-type risk notes,
+    never as "invest here", and end with the standard disclaimer.
 
 ## Client interaction flow
 

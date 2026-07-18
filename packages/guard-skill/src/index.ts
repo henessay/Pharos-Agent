@@ -90,3 +90,5 @@ export {
 } from "./types.js";
 // Wallet check-up (read-only advisor)
 export * from "./wallet/index.js";
+// Yield comparison — RWA vs DeFi (read-only advisor)
+export * from "./yields/index.js";

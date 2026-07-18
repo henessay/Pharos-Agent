@@ -16,6 +16,7 @@ import {
   policyStatus,
   requireDeployments,
   treasuryPolicyAbi,
+  type YieldsClient,
 } from "@pharos-guard/guard-skill";
 import {
   type Address,
@@ -34,6 +35,7 @@ import {
   makeDryRunClient,
   makeFixtureDexProvider,
   makeFixtureMarketProvider,
+  makeFixtureYieldsClient,
 } from "./fixtures.js";
 import type { ProposedIntent } from "./propose.js";
 
@@ -53,6 +55,8 @@ export interface AgentContext {
   explorer?: ExplorerClient;
   /** Market-data provider override; dry-run installs an offline fixture. */
   market?: MarketDataProvider;
+  /** Yields client override; dry-run installs an offline fixture. */
+  yields?: YieldsClient;
 }
 
 /** Build the agent context from the environment. `GUARD_DRY_RUN=1` → offline. */
@@ -70,6 +74,7 @@ export function createContext(): AgentContext {
       dexProvider: makeFixtureDexProvider(),
       explorer: FIXTURE_EXPLORER,
       market: makeFixtureMarketProvider(),
+      yields: makeFixtureYieldsClient(),
     };
   }
   const deployments = loadDeployments();

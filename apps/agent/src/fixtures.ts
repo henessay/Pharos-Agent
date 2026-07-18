@@ -19,6 +19,8 @@ import {
   USDT,
   type WalletCheckupOptions,
   WPHRS,
+  type YieldPool,
+  type YieldsClient,
 } from "@pharos-guard/guard-skill";
 import {
   type Address,
@@ -247,6 +249,90 @@ export function makeFixtureMarketProvider(): MarketDataProvider {
       const wanted = new Set(symbols.map((s) => s.toUpperCase()));
       return FIXTURE_COINS.filter((c) => wanted.has(c.symbol));
     },
+  };
+}
+
+// --- yield-comparison fixtures (GUARD_DRY_RUN) ------------------------------
+
+/**
+ * Canned DefiLlama-shaped pools: the Centrifuge JTRSY Pharos pool, a JAAA
+ * pool, RWA lenders, stable pools and a volatile staking pool — enough for
+ * every yield_comparison category to produce rows offline. Numbers mirror
+ * the live API snapshot of 2026-07-19.
+ */
+const FIXTURE_YIELD_POOLS: YieldPool[] = [
+  {
+    pool: "fixture-jtrsy-pharos",
+    project: "centrifuge-protocol",
+    chain: "Pharos",
+    symbol: "USDC",
+    poolMeta: "Janus Henderson Treasury Fund",
+    apyPct: 3.34,
+    apyMean30dPct: 3.45,
+    tvlUsd: 4_377_008,
+    stablecoin: true,
+    ilRisk: "no",
+    exposure: "single",
+  },
+  {
+    pool: "fixture-jaaa-eth",
+    project: "centrifuge-protocol",
+    chain: "Ethereum",
+    symbol: "AUSD",
+    poolMeta: "Janus Henderson AAA CLO Fund",
+    apyPct: 2.57,
+    apyMean30dPct: 2.6,
+    tvlUsd: 374_555_440,
+    stablecoin: true,
+    ilRisk: "no",
+    exposure: "single",
+  },
+  {
+    pool: "fixture-maple-usdc",
+    project: "maple",
+    chain: "Ethereum",
+    symbol: "USDC",
+    poolMeta: "Syrup USDC",
+    apyPct: 4.82,
+    apyMean30dPct: 4.7,
+    tvlUsd: 3_212_765_266,
+    stablecoin: true,
+    ilRisk: "no",
+    exposure: "single",
+  },
+  {
+    pool: "fixture-aave-usdt",
+    project: "aave-v3",
+    chain: "Ethereum",
+    symbol: "USDT",
+    poolMeta: null,
+    apyPct: 2.5,
+    apyMean30dPct: 2.4,
+    tvlUsd: 608_745_904,
+    stablecoin: true,
+    ilRisk: "no",
+    exposure: "single",
+  },
+  {
+    pool: "fixture-lido-steth",
+    project: "lido",
+    chain: "Ethereum",
+    symbol: "STETH",
+    poolMeta: null,
+    apyPct: 2.22,
+    apyMean30dPct: 2.3,
+    tvlUsd: 17_106_513_224,
+    stablecoin: false,
+    ilRisk: "no",
+    exposure: "single",
+  },
+];
+
+/** Offline YieldsClient for GUARD_DRY_RUN — no HTTP, deterministic pools. */
+export function makeFixtureYieldsClient(): YieldsClient {
+  return {
+    name: "fixture-yields",
+    getPools: async () => FIXTURE_YIELD_POOLS,
   };
 }
 

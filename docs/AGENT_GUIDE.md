@@ -48,6 +48,14 @@ Lighthouse Agent is a **Guarded DeFi Advisor** for the Pharos Atlantic Testnet: 
 
 **Try:** "Swap 0.5 PHRS to USDC with the firewall checking slippage first" · "How much USDT would I get for 1 USDC right now?" · "Quote only, don't send anything"
 
+### RWA vs DeFi yields
+- Comparison table of tokenized RWA yields against DeFi pools: instrument / type (RWA | DeFi stable | DeFi volatile) / APY / TVL / risk note
+- RWA side: Centrifuge JTRSY (tokenized US Treasuries, live on Pharos mainnet) and JAAA (AAA CLO structured credit), plus Maple, Goldfinch, Ondo, OpenEden and other curated RWA projects
+- DeFi side: top stablecoin pools (USDC/USDT/DAI, no IL risk) and top volatile pools by TVL, from the free DefiLlama yields API (cached 5 minutes)
+- Every answer carries the selection/sorting methodology line and per-row risk notes (RWA: regulated asset, KYC may apply; DeFi: smart contract risk, variable APY) — data, never "invest here"
+
+**Try:** "Compare RWA vs DeFi yields" · "Where do tokenized treasuries stand vs stablecoin pools?" · "Где сейчас доходность — RWA или DeFi?"
+
 ### Wallet check-up
 - Read-only audit of any address: portfolio (balances, USD where a market price exists), ERC-20 approvals, scam check, gas spent over 7/30 days, health score
 - Approval risk levels reuse the firewall's logic: unlimited allowance → critical, spender without contract code (EOA) → critical, spender outside the confirmed allowlist → warning

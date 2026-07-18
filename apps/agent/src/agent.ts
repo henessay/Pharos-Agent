@@ -24,8 +24,11 @@ import {
   guardCheck,
 } from "./tools.js";
 import { runWalletCheckup } from "./wallet.js";
+import { yieldComparison } from "./yields.js";
 
-export const SYSTEM_PROMPT = `You are a Pharos treasury agent and Guarded DeFi Advisor. You move PHRS out of a TreasuryPolicy contract on the Pharos testnet on the user's behalf, trade on FaroSwap (swap between PHRS, WPHRS, USDC and USDT via get_quote / swap_tokens; manage full-range LP positions via add_liquidity / remove_liquidity), provide market analytics (market_overview / token_info / suggest_allocation), and audit wallets (wallet_checkup).
+export const SYSTEM_PROMPT = `You are a Pharos treasury agent and Guarded DeFi Advisor. You move PHRS out of a TreasuryPolicy contract on the Pharos testnet on the user's behalf, trade on FaroSwap (swap between PHRS, WPHRS, USDC and USDT via get_quote / swap_tokens; manage full-range LP positions via add_liquidity / remove_liquidity), provide market analytics (market_overview / token_info / suggest_allocation / yield_comparison), and audit wallets (wallet_checkup).
+
+Yield comparison: for "compare RWA vs DeFi yields", "где доходность", "tokenized treasuries", "RWA yields", "compare yields" → call yield_comparison (category "rwa" when the user asks only about RWA/treasuries, "stable" for stablecoin pools only, else "all"). Present the TABLE (instrument / type / APY / TVL / risk note) plus the methodology line from the result. NEVER say "invest here" or rank options as recommendations — it is data only, and advisor rules A and C apply.
 
 Wallet check-up: for "check my wallet", "is my wallet safe", "audit this address", "проверь кошелёк" and similar → call wallet_checkup with the 0x address. If the user gave no address, ASK for it first — never invent one. The check-up is read-only: present Portfolio, Approvals (with risk levels), Scam check, Gas Spent, the Health Score with its formula, and the Revoke Plan. NEVER offer to execute revokes: each plan entry is a ready approve(spender, 0) transaction the user sends themselves (in advisor deployments point them to https://github.com/henessay/Pharos-Agent).
 
@@ -187,6 +190,25 @@ export const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "yield_comparison",
+      description:
+        "Read-only comparison table of tokenized RWA yields (Centrifuge JTRSY tokenized US Treasuries / JAAA structured credit + Maple, Goldfinch, Ondo, OpenEden …) versus DeFi pools (top stablecoin and volatile pools by TVL, DefiLlama data). Each row: instrument, type (RWA | DeFi stable | DeFi volatile), APY, TVL, risk note. Use for 'compare RWA vs DeFi yields', 'где доходность', 'tokenized treasuries', 'RWA yields'. Data only — present the table + methodology, never investment instructions, and end with the standard disclaimer.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["all", "rwa", "stable"],
+            description:
+              "'rwa' when the user asks only about RWA/tokenized treasuries; 'stable' for stablecoin pools only; default 'all'.",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "wallet_checkup",
       description:
         "Read-only Wallet Check-up for a 0x address: portfolio (balances + USD where priced), ERC-20 approvals with risk classification (unlimited / EOA spender / unknown spender), scam check (where supported), gas spent over 7/30 days, a transparent 0-100 health score, and a firewall-vetted revoke plan (approve(spender, 0) intents the USER executes — this tool never sends anything). Use for 'check my wallet', 'is my wallet safe', 'audit 0x…'. If no address was given, ask the user for it instead of calling this.",
@@ -284,6 +306,7 @@ export async function dispatch(
     amount_usd?: number;
     risk_level?: string;
     address?: string;
+    category?: string;
   },
   ctx: AgentContext,
 ): Promise<{ result: string; log: string }> {
@@ -367,6 +390,13 @@ export async function dispatch(
           };
         const res = await removeLiquidity(intent, ctx, args.confirmed === true);
         return { result: json(res), log: `${gray("→")} remove_liquidity… ${execTag(res)}` };
+      }
+      case "yield_comparison": {
+        const res = await yieldComparison(ctx, args.category ?? "all");
+        return {
+          result: json(res),
+          log: `${gray("→")} yield_comparison… ${res.rows.length} rows (${res.category}, rwa source: ${res.rwaSource})`,
+        };
       }
       case "wallet_checkup": {
         const res = await runWalletCheckup(args.address, ctx);

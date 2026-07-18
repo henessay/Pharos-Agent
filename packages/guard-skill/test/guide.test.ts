@@ -14,13 +14,14 @@ describe("AGENT_GUIDE.md structure", () => {
     expect(guide.who).toContain("Pharos");
   });
 
-  it("has all five capability categories with items and examples", () => {
+  it("has all six capability categories with items and examples", () => {
     const names = Object.keys(guide.capabilities);
     expect(names).toEqual([
       "Transaction firewall",
       "Treasury operations",
       "Market analytics",
       "Guarded swap quotes",
+      "RWA vs DeFi yields",
       "Wallet check-up",
     ]);
     for (const cap of Object.values(guide.capabilities)) {
