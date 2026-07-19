@@ -4,9 +4,10 @@ description: >
   Guarded DeFi advisor for Pharos: transaction firewall (11 rules), market
   analysis, risk-based allocation ideas, safety-checked swap quotes, read-only
   Wallet Check-up (approvals, risks, gas spent, health score, revoke plan),
-  and RWA vs DeFi yield comparison (tokenized treasuries vs pools). Verdicts
-  logged on-chain.
-version: 0.5.0
+  RWA vs DeFi yield comparison, and an airdrop activity check against a
+  verified campaign registry (anti-phishing claim guidance). Verdicts logged
+  on-chain.
+version: 0.6.0
 requires:
   anyBins:
     - node
@@ -39,10 +40,12 @@ payment on Pharos — or when the user asks about market prices, "what's the
 market doing", token stats, portfolio/allocation ideas, what the agent can
 do, to check/audit a wallet ("check my wallet", "is my wallet safe",
 "проверь кошелёк"), to compare yields ("compare RWA vs DeFi yields",
-"tokenized treasuries", "где доходность"), or mentions "tx-guard", "guard
-check", "is it safe to send", "risk report", "treasury policy", "spending
-limit", "allowlist", "unlimited approve", "swap", "liquidity", "FaroSwap",
-"RWA", "JTRSY", "JAAA", "pharos", "PHRS", or "PROS".
+"tokenized treasuries", "где доходность"), to check airdrop activity ("am I
+eligible for airdrops", "какие дропы", "airdrop check", "how do I claim"),
+or mentions "tx-guard", "guard check", "is it safe to send", "risk report",
+"treasury policy", "spending limit", "allowlist", "unlimited approve",
+"swap", "liquidity", "FaroSwap", "RWA", "JTRSY", "JAAA", "airdrop",
+"pharos", "PHRS", or "PROS".
 
 Vet AI-agent transactions on the **Pharos Atlantic Testnet** (chain id
 `688689`) before they are signed, and answer market questions with data — not
@@ -95,6 +98,8 @@ Run every command from this skill's directory (paths are relative to it).
 | "What could I do with $100?" | **Risk-Based Allocation Ideas** | `node scripts/suggest-allocation.mjs --amount-usd 100 --risk low\|medium\|high` | — |
 | "Check my wallet" / "Is my wallet safe?" | **Wallet Check-up** (read-only: portfolio, approvals + risk levels, scam check, gas spent 7/30d, health score 0-100, revoke plan) | `node scripts/wallet-checkup.mjs --address 0x…` (ask for the address if not given) | — |
 | "Compare RWA vs DeFi yields" | **RWA vs DeFi Yields** (read-only table: Centrifuge JTRSY/JAAA + RWA projects vs top DeFi stable/volatile pools, APY/TVL/risk notes, DefiLlama data) | `node scripts/yield-comparison.mjs [--category all\|rwa\|stable]` | — |
+| "Am I eligible for airdrops?" | **Airdrop Check** (read-only activity profile vs verified campaign registry; signals likely-eligible / activity-too-low / criteria-not-public / ended; never a guarantee) | `node scripts/airdrop-check.mjs --address 0x…` | [airdrop-campaigns.json](assets/airdrop-campaigns.json) |
+| "How do I claim X?" | **Claim Guidance** (official links from the verified registry ONLY + phishing warning; unknown campaign → refusal to relay verbatim) | `node scripts/airdrop-check.mjs --claim <campaign>` | [airdrop-campaigns.json](assets/airdrop-campaigns.json) |
 
 **No execution, by design.** The dex scripts quote, build and firewall-check a
 plan, then STOP. Every dex-script response carries this redirect, which you
@@ -147,6 +152,15 @@ Native PHRS cannot be pooled directly; wrap it and use WPHRS.
 16. "Где сейчас доходность — RWA или DeFi-пулы?" → RWA vs DeFi Yields
     (category `all`); present rows as DATA with the per-type risk notes,
     never as "invest here", and end with the standard disclaimer.
+17. "Am I eligible for airdrops? My address is 0x…" → Airdrop Check: relay
+    the activity profile (with its scan-window note), the campaign table
+    with signals, and END with "Eligibility is never guaranteed until
+    officially announced."
+18. "How do I claim the PROS airdrop?" → Claim Guidance: relay ONLY the
+    official link(s) from the registry plus the phishing warning verbatim.
+    For a campaign NOT in the registry, relay the refusal — never search
+    for, guess, or construct a claim link, never propose signing a claim,
+    and never ask for a seed phrase or private key.
 
 ## Client interaction flow
 
@@ -205,3 +219,10 @@ hard-code them elsewhere.
   GoPlus APIs). Its revoke plan is advice: pre-vetted `approve(spender, 0)`
   intents the wallet owner executes themselves — there is no code path here
   that could send them.
+- **Airdrop / claim safety.** The Airdrop Check is informational only.
+  Claim links come EXCLUSIVELY from the verified registry
+  ([assets/airdrop-campaigns.json](assets/airdrop-campaigns.json)) via the
+  `--claim` lookup, always with the phishing warning; unknown campaigns get
+  a refusal. Never relay third-party "claim guides", never propose signing a
+  claim transaction, never request seed phrases or private keys — a shared
+  key must be treated as compromised.

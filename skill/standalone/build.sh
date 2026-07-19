@@ -28,6 +28,8 @@ cp "$ROOT/skill/standalone/SKILL.md" "$PACK/tx-guard/SKILL.md"
 cp "$ROOT/skill/standalone/package.json" "$PACK/tx-guard/package.json"
 cp "$ROOT"/skill/standalone/scripts/*.mjs "$PACK/tx-guard/scripts/"
 cp "$ROOT/skill/standalone/assets/networks.json" "$PACK/tx-guard/assets/"
+# Verified airdrop-campaign registry — the only source of claim links.
+cp "$ROOT/packages/guard-skill/assets/airdrop-campaigns.json" "$PACK/tx-guard/assets/"
 cp "$ROOT/skill/references/risk-rules.md" "$PACK/tx-guard/references/"
 # The agent's self-description — single source of truth shared with the repo.
 cp "$ROOT/docs/AGENT_GUIDE.md" "$PACK/tx-guard/references/"

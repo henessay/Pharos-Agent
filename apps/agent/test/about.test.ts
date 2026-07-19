@@ -30,6 +30,7 @@ describe("about_agent (GUARD_DRY_RUN fixtures)", () => {
       "Guarded swap quotes",
       "RWA vs DeFi yields",
       "Wallet check-up",
+      "Airdrop check",
     ]);
     for (const cap of Object.values(guide.capabilities) as {
       items: string[];
@@ -40,7 +41,7 @@ describe("about_agent (GUARD_DRY_RUN fixtures)", () => {
     }
     expect(guide.notDoing.join(" ")).toContain("marketplace");
     expect(guide.links.GitHub).toContain("github.com");
-    expect(log).toContain("6 capability categories");
+    expect(log).toContain("7 capability categories");
   });
 
   it("'how do I execute the swap myself?' → step-by-step guide from the same source", async () => {

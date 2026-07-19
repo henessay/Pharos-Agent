@@ -1,8 +1,8 @@
 {
   "name": "tx-guard",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
-  "description": "Guarded DeFi advisor for Pharos: transaction firewall (11 rules), market analysis, risk-based allocation ideas, safety-checked swap quotes, read-only wallet check-up with revoke plan, RWA vs DeFi yield comparison. Self-contained: Node >= 20, no install, never executes.",
+  "description": "Guarded DeFi advisor for Pharos: transaction firewall (11 rules), market analysis, risk-based allocation ideas, safety-checked swap quotes, read-only wallet check-up with revoke plan, RWA vs DeFi yield comparison, airdrop activity check with anti-phishing claim guidance. Self-contained: Node >= 20, no install, never executes.",
   "license": "MIT",
   "type": "module",
   "engines": {

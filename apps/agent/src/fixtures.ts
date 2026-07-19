@@ -252,6 +252,39 @@ export function makeFixtureMarketProvider(): MarketDataProvider {
   };
 }
 
+// --- airdrop-check fixtures (GUARD_DRY_RUN) ---------------------------------
+
+/**
+ * Socialscan-shaped fetch for the offline airdrop check: a 34-day-old address
+ * with 14 transactions, half of them into the FaroSwap RouteProxy — rich
+ * enough that the on-chain-checkable programs report "likely eligible".
+ */
+export function makeFixtureAirdropFetch(address: string): typeof fetch {
+  const now = Date.now();
+  const daysAgo = (d: number) => new Date(now - d * 86_400_000).toISOString();
+  const txs = Array.from({ length: 14 }, (_, i) => ({
+    from_address: address.toLowerCase(),
+    to_address: i % 2 ? DODO_ROUTE_PROXY.toLowerCase() : `0x${String(i + 1).padStart(40, "0")}`,
+    transaction_fee: "0.0002",
+    block_timestamp: daysAgo((i % 20) + 1),
+    to_addr: { is_contract: true },
+  }));
+
+  return (async (url: RequestInfo | URL) => {
+    const u = String(url);
+    if (u.includes("/profile")) {
+      return {
+        ok: true,
+        json: async () => ({
+          first_transaction: { block_number: 24_254_749, block_timestamp: daysAgo(34) },
+          last_transaction: { block_timestamp: daysAgo(1) },
+        }),
+      };
+    }
+    return { ok: true, json: async () => ({ total: txs.length, data: txs }) };
+  }) as typeof fetch;
+}
+
 // --- yield-comparison fixtures (GUARD_DRY_RUN) ------------------------------
 
 /**

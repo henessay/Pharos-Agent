@@ -14,7 +14,7 @@ describe("AGENT_GUIDE.md structure", () => {
     expect(guide.who).toContain("Pharos");
   });
 
-  it("has all six capability categories with items and examples", () => {
+  it("has all seven capability categories with items and examples", () => {
     const names = Object.keys(guide.capabilities);
     expect(names).toEqual([
       "Transaction firewall",
@@ -23,6 +23,7 @@ describe("AGENT_GUIDE.md structure", () => {
       "Guarded swap quotes",
       "RWA vs DeFi yields",
       "Wallet check-up",
+      "Airdrop check",
     ]);
     for (const cap of Object.values(guide.capabilities)) {
       expect(cap.items.length).toBeGreaterThanOrEqual(2);

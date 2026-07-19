@@ -8,6 +8,8 @@ export {
   treasuryPolicyAbi,
   UNLIMITED_APPROVE_THRESHOLD,
 } from "./abi.js";
+// Airdrop check (read-only, informational)
+export * from "./airdrop/index.js";
 export { PHAROS_TESTNET_CHAIN_ID, pharosTestnet } from "./chain.js";
 // Deployments
 export {

@@ -2,6 +2,7 @@ import { createInterface } from "node:readline/promises";
 import { toStructuredError } from "@pharos-guard/guard-skill";
 import OpenAI from "openai";
 import { aboutAgent } from "./about.js";
+import { runAirdropCheck, runClaimGuidance } from "./airdrop.js";
 import { bold, colorVerdict, cyan, gray, green, red, yellow } from "./colors.js";
 import { decideAction, fixHint } from "./decide.js";
 import {
@@ -26,7 +27,15 @@ import {
 import { runWalletCheckup } from "./wallet.js";
 import { yieldComparison } from "./yields.js";
 
-export const SYSTEM_PROMPT = `You are a Pharos treasury agent and Guarded DeFi Advisor. You move PHRS out of a TreasuryPolicy contract on the Pharos testnet on the user's behalf, trade on FaroSwap (swap between PHRS, WPHRS, USDC and USDT via get_quote / swap_tokens; manage full-range LP positions via add_liquidity / remove_liquidity), provide market analytics (market_overview / token_info / suggest_allocation / yield_comparison), and audit wallets (wallet_checkup).
+export const SYSTEM_PROMPT = `You are a Pharos treasury agent and Guarded DeFi Advisor. You move PHRS out of a TreasuryPolicy contract on the Pharos testnet on the user's behalf, trade on FaroSwap (swap between PHRS, WPHRS, USDC and USDT via get_quote / swap_tokens; manage full-range LP positions via add_liquidity / remove_liquidity), provide market analytics (market_overview / token_info / suggest_allocation / yield_comparison), audit wallets (wallet_checkup), and check airdrop-relevant activity (airdrop_check / claim_guidance).
+
+Airdrop check: for "am I eligible for airdrops", "какие дропы", "airdrop check", "what drops can I get" → call airdrop_check with the 0x address (ask for it if missing — never invent one). Present the Activity Profile (always including its scan-window note), the campaigns table (status, signal, explanation), and the generic recommendations. End EVERY airdrop answer with exactly: "Eligibility is never guaranteed until officially announced."
+
+Claim safety (HARD rules, also enforced in code):
+- NEVER hand out a claim link except the officialUrl / officialClaimUrl returned by claim_guidance. No third-party "claim guides", no links from memory, no exceptions.
+- Any "how do I claim X" question → call claim_guidance with the campaign/token name and relay ONLY its official link(s) plus its phishing warning verbatim.
+- If claim_guidance refuses (campaign not in the verified registry), relay the refusal and explanation — do NOT search for, guess, or construct a link instead.
+- NEVER propose signing or preparing a claim transaction, and NEVER ask for a seed phrase or private key. If the user offers one, tell them to treat it as compromised and stop.
 
 Yield comparison: for "compare RWA vs DeFi yields", "где доходность", "tokenized treasuries", "RWA yields", "compare yields" → call yield_comparison (category "rwa" when the user asks only about RWA/treasuries, "stable" for stablecoin pools only, else "all"). Present the TABLE (instrument / type / APY / TVL / risk note) plus the methodology line from the result. NEVER say "invest here" or rank options as recommendations — it is data only, and advisor rules A and C apply.
 
@@ -190,6 +199,43 @@ export const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "airdrop_check",
+      description:
+        "Read-only airdrop activity check for a 0x address on Pharos: activity profile (address age, tx count, unique contracts, key-protocol interactions, gas — within a bounded explorer scan window), matched against the VERIFIED ecosystem campaign registry (statuses live/ended/rumored, signals likely-eligible / activity-too-low / criteria-not-public / ended), plus generic activity recommendations. Informational only — no transactions, no claims, eligibility never guaranteed. Use for 'am I eligible for airdrops', 'какие дропы', 'airdrop check'.",
+      parameters: {
+        type: "object",
+        properties: {
+          address: {
+            type: "string",
+            description: "The wallet address to profile — full 42-char 0x address.",
+          },
+        },
+        required: ["address"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "claim_guidance",
+      description:
+        "The ONLY way to answer 'how do I claim X'. Looks the campaign/token up in the verified registry: known → official URL(s) + mandatory phishing warning; unknown → a refusal to relay verbatim (no link). Never bypass this tool with links from memory or search.",
+      parameters: {
+        type: "object",
+        properties: {
+          campaign: {
+            type: "string",
+            description:
+              "Campaign or token name the user asks to claim, e.g. 'PROS' or 'faroswap'.",
+          },
+        },
+        required: ["campaign"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "yield_comparison",
       description:
         "Read-only comparison table of tokenized RWA yields (Centrifuge JTRSY tokenized US Treasuries / JAAA structured credit + Maple, Goldfinch, Ondo, OpenEden …) versus DeFi pools (top stablecoin and volatile pools by TVL, DefiLlama data). Each row: instrument, type (RWA | DeFi stable | DeFi volatile), APY, TVL, risk note. Use for 'compare RWA vs DeFi yields', 'где доходность', 'tokenized treasuries', 'RWA yields'. Data only — present the table + methodology, never investment instructions, and end with the standard disclaimer.",
@@ -307,6 +353,7 @@ export async function dispatch(
     risk_level?: string;
     address?: string;
     category?: string;
+    campaign?: string;
   },
   ctx: AgentContext,
 ): Promise<{ result: string; log: string }> {
@@ -390,6 +437,27 @@ export async function dispatch(
           };
         const res = await removeLiquidity(intent, ctx, args.confirmed === true);
         return { result: json(res), log: `${gray("→")} remove_liquidity… ${execTag(res)}` };
+      }
+      case "airdrop_check": {
+        const res = await runAirdropCheck(args.address, ctx);
+        if ("error" in res) {
+          return { result: json(res), log: `${gray("→")} airdrop_check… ${yellow(res.error)}` };
+        }
+        const eligible = res.campaigns.filter((c) => c.signal === "likely-eligible").length;
+        return {
+          result: json(res),
+          log: `${gray("→")} airdrop_check… ${res.campaigns.length} campaigns, ${eligible} pattern match(es)`,
+        };
+      }
+      case "claim_guidance": {
+        const res = runClaimGuidance(args.campaign);
+        if ("error" in res) {
+          return { result: json(res), log: `${gray("→")} claim_guidance… ${yellow(res.error)}` };
+        }
+        const tag = res.found
+          ? green(`official: ${res.campaign}`)
+          : red("refused (not in registry)");
+        return { result: json(res), log: `${gray("→")} claim_guidance… ${tag}` };
       }
       case "yield_comparison": {
         const res = await yieldComparison(ctx, args.category ?? "all");

@@ -64,6 +64,14 @@ Lighthouse Agent is a **Guarded DeFi Advisor** for the Pharos Atlantic Testnet: 
 
 **Try:** "Check my wallet 0x… — show approvals, risks and gas spent" · "Is my wallet safe?" · "Проверь кошелёк 0x…"
 
+### Airdrop check
+- Read-only activity profile of any address on Pharos: address age (first transaction), transaction count, unique contracts, key-protocol interactions (FaroSwap, TreasuryPolicy/GuardLog), gas — within a bounded, clearly-marked explorer scan window
+- Matches the profile against a VERIFIED campaign registry (dated config, official links only) with honest signals: likely eligible / activity too low / criteria not public / ended — always probabilistic, never a promise
+- Claim guidance for known campaigns only: the official URL plus a mandatory phishing warning; unknown campaigns get a refusal, because unsolicited claim pages are the #1 phishing vector
+- Generic activity recommendations without financial promises ("interacting with ecosystem dApps typically counts")
+
+**Try:** "Am I eligible for airdrops? 0x…" · "Какие дропы мне светят?" · "How do I claim the PROS airdrop?"
+
 ## What the agent will NOT do
 
 - Execute transactions on the marketplace — it has no access to your wallet there; you always get a safety-checked plan and instructions instead
@@ -72,6 +80,8 @@ Lighthouse Agent is a **Guarded DeFi Advisor** for the Pharos Atlantic Testnet: 
 - Assume your risk profile — allocation ideas require you to state low, medium or high
 - Bypass its own firewall — there is no code path around the guard, and block verdicts never execute
 - Execute revokes from a wallet check-up — the revoke plan is advice; you send the approve(spender, 0) transactions yourself
+- Hand out claim links outside the verified campaign registry, propose signing a claim transaction, or ask for a seed phrase / private key — unknown "claim pages" are treated as phishing and refused
+- Guarantee airdrop eligibility — signals are pattern matches; eligibility is never guaranteed until officially announced
 
 ## Execute a quoted swap yourself
 

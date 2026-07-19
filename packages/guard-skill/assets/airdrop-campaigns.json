@@ -1,0 +1,51 @@
+{
+  "updatedAt": "2026-07-19",
+  "comment": "Verified Pharos-ecosystem campaigns ONLY. Every entry must have an official URL on a verified domain (pharos.xyz / faroswap.xyz). No rumors without the 'rumored' status, no invented campaigns, no third-party claim links — see docs/airdrop-check-sources.md for the verification trail.",
+  "campaigns": [
+    {
+      "id": "pharos-testnet-points",
+      "name": "Pharos Testnet Points / XP program",
+      "status": "live",
+      "criteria": "On-chain activity on the incentivized testnet: swaps, liquidity, faucet claims, daily check-ins and quests earn XP/points (per ecosystem writeups; the exact scoring formula is not published by Pharos).",
+      "criteriaPublic": true,
+      "onchainCheckable": true,
+      "requiresProtocols": [],
+      "officialUrl": "https://pharos.xyz/",
+      "updatedAt": "2026-07-19"
+    },
+    {
+      "id": "pros-mainnet-claim",
+      "name": "Pharos $PROS airdrop claim (mainnet)",
+      "status": "live",
+      "criteria": "Snapshot-based allocation determined by Pharos; eligibility can only be verified on the official claim portal. Claim window reported as open until 2026-10-25.",
+      "criteriaPublic": false,
+      "onchainCheckable": false,
+      "requiresProtocols": [],
+      "officialUrl": "https://pharos.xyz/",
+      "officialClaimUrl": "https://claim.pharos.xyz/",
+      "updatedAt": "2026-07-19"
+    },
+    {
+      "id": "ai-agent-carnival",
+      "name": "Pharos AI Agent Carnival (150,000 PROS pool)",
+      "status": "live",
+      "criteria": "Announced 2026-06-08, runs 2026-06-23 through 2026-07-21. Tracks: Skill Hackathon (Anvita Skill Summit), Agent Invocation Race, Steward Agent First-Deployment Incentive, Gravity Launch (social), Resonance Creators (content). Participation is judged off-chain per track — on-chain activity alone does not determine eligibility.",
+      "criteriaPublic": true,
+      "onchainCheckable": false,
+      "requiresProtocols": [],
+      "officialUrl": "https://www.pharos.xyz/blog",
+      "updatedAt": "2026-07-19"
+    },
+    {
+      "id": "faroswap-points",
+      "name": "FaroSwap points program",
+      "status": "live",
+      "criteria": "Swaps, liquidity provision, referrals and social tasks on FaroSwap (Pharos Atlantic testnet) earn Pharos points, per ecosystem writeups; the exact scoring is not published.",
+      "criteriaPublic": true,
+      "onchainCheckable": true,
+      "requiresProtocols": ["faroswap"],
+      "officialUrl": "https://faroswap.xyz/",
+      "updatedAt": "2026-07-19"
+    }
+  ]
+}
